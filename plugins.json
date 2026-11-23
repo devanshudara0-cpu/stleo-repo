@@ -3,7 +3,7 @@
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Fivemovierulz.cs3",
     "status": 1,
     "version": 10,
-    "name": "STxLEO Multi-Audio Server",
+    "name": "LEOVONIX Multi-Audio Server",
     "internalName": "Fivemovierulz",
     "authors": [
       "Devanshu (@Dara_OG)"
@@ -24,7 +24,7 @@
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/FourKHDHub.cs3",
     "status": 1,
     "version": 41,
-    "name": "STxLEO Hindi 4K Server",
+    "name": "LEOVONIX Hindi 4K Server",
     "internalName": "FourKHDHub",
     "authors": [
       "Devanshu (@Dara_OG)"
@@ -45,7 +45,7 @@
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDhub4u.cs3",
     "status": 1,
     "version": 57,
-    "name": "STxLEO Hindi 4K Server",
+    "name": "LEOVONIX Hindi 4K Server",
     "internalName": "HDhub4u",
     "authors": [
       "Devanshu (@Dara_OG)"
@@ -109,12 +109,12 @@
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MovieBoxProvider.cs3",
     "status": 1,
     "version": 43,
-    "name": "STxLEO MovieBox Server",
+    "name": "LEOVONIX MovieBox Server",
     "internalName": "MovieBoxProvider",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
-    "description": "Official MovieBox Server for STxLEO OTT",
+    "description": "Official MovieBox Server for LEOVONIX OTT",
     "fileSize": 263394,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
@@ -173,7 +173,7 @@
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/SuperStream.cs3",
     "status": 1,
     "version": 44,
-    "name": "STxLEO Ultra 4K Server",
+    "name": "LEOVONIX Ultra 4K Server",
     "internalName": "SuperStream",
     "authors": [
       "Devanshu (@Dara_OG)"
@@ -198,7 +198,7 @@
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/UHDmoviesProvider.cs3",
     "status": 1,
     "version": 45,
-    "name": "STxLEO UHD Movies",
+    "name": "LEOVONIX UHD Movies",
     "internalName": "UHDmoviesProvider",
     "authors": [
       "Devanshu (@Dara_OG)"

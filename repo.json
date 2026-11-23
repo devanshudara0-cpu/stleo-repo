@@ -1,6 +1,6 @@
 {
-  "name": "ST\u00d7LEO OTT Official Providers",
-  "description": "Official MovieBox, SuperStream & 4K Hindi Providers by Devanshu (@Dara_OG)",
+  "name": "LEOVONIX Official Providers",
+  "description": "Official MovieBox, SuperStream & 4K Hindi Providers for LEOVONIX by Devanshu (@Dara_OG)",
   "manifestVersion": 1,
   "pluginLists": [
     "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/plugins.json"
