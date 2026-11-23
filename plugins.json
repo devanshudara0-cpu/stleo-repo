@@ -1,6 +1,6 @@
 [
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/Fivemovierulz.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Fivemovierulz.cs3",
     "status": 1,
     "version": 10,
     "name": "STxLEO Multi-Audio Server",
@@ -10,18 +10,18 @@
     ],
     "description": "South Indian & Dual Audio Server",
     "fileSize": 99864,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "ta",
     "tvTypes": [
       "TvSeries",
       "Movie"
     ],
-    "iconUrl": "https://i.ibb.co/SwQRhsn/20241016-074942.jpg",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Fivemovierulz.jpg",
     "apiVersion": 1,
     "fileHash": "sha256-9780e2cef112bb9d731cb83fab8b949117fe64eee18d660c94e58801438a5487"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/FourKHDHub.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/FourKHDHub.cs3",
     "status": 1,
     "version": 41,
     "name": "STxLEO Hindi 4K Server",
@@ -31,18 +31,18 @@
     ],
     "description": "Hindi Dubbed & Bollywood 4K Server",
     "fileSize": 139935,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/Icons/4KHDHUB-Bright-Logo.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/FourKHDHub.png",
     "apiVersion": 1,
     "fileHash": "sha256-6111ed4148c6713a19d58ec1fba46aa21b0c6de380d594ad7c2e732520ba2d2f"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/HDhub4u.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDhub4u.cs3",
     "status": 1,
     "version": 57,
     "name": "STxLEO Hindi 4K Server",
@@ -51,20 +51,20 @@
       "Devanshu (@Dara_OG)"
     ],
     "fileSize": 156447,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries",
       "Anime"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/Icons/HDHUB.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/HDhub4u.png",
     "apiVersion": 1,
     "fileHash": "sha256-5c38524ba62269f71cae21ad91151d692694542fe9b60a320cc8511ec00b3b1d",
     "description": "Hindi Dubbed & Bollywood 4K Server"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/Hdmovie2.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Hdmovie2.cs3",
     "status": 1,
     "version": 7,
     "name": "Hdmovie2",
@@ -74,18 +74,18 @@
     ],
     "description": "Hdmovie2",
     "fileSize": 121781,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "TvSeries",
       "Movie"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/Icons/hdmovie2.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Hdmovie2.png",
     "apiVersion": 1,
     "fileHash": "sha256-9c167498191b1fc679a5f60e8a5f2d0873b25f82ed69a80a129677a8a7224f36"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/Hindmoviez.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Hindmoviez.cs3",
     "status": 1,
     "version": 17,
     "name": "Hindmoviez",
@@ -95,18 +95,18 @@
     ],
     "description": "Watch Movies & TvSeries (Multi-Lang)",
     "fileSize": 126949,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/Icons/hindmoviez.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Hindmoviez.png",
     "apiVersion": 1,
     "fileHash": "sha256-5f29785647a4f1639da8df0ca7fe133f88d5b69fbb91c4a74f22f298fc0181ea"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/MovieBoxProvider.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MovieBoxProvider.cs3",
     "status": 1,
     "version": 43,
     "name": "STxLEO MovieBox Server",
@@ -116,18 +116,18 @@
     ],
     "description": "Official MovieBox Server for STxLEO OTT",
     "fileSize": 263394,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/Icons/moviebox.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MovieBoxProvider.png",
     "apiVersion": 1,
     "fileHash": "sha256-62abd60212c197ca592c0fe3118157c4590bdcfd9609dd976f46c28abb535ff0"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/Movies4u.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Movies4u.cs3",
     "status": 1,
     "version": 18,
     "name": "Movies4u",
@@ -137,18 +137,18 @@
     ],
     "description": "Movies4u",
     "fileSize": 163713,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/Icons/movies4u.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Movies4u.png",
     "apiVersion": 1,
     "fileHash": "sha256-dc5c1f4dbce02f11a0a0990e5054a5e8c1d7bafacddb85174d2cd6ad6fcae281"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/MultiMoviesProvider.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MultiMoviesProvider.cs3",
     "status": 1,
     "version": 55,
     "name": "MultiMoviesProvider",
@@ -158,19 +158,19 @@
     ],
     "description": "Indian Multi-language HD Provider",
     "fileSize": 184840,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries",
       "Anime"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/LikDev-256/likdev256-tamil-providers/master/MultiMoviesProvider/icon.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MultiMoviesProvider.png",
     "apiVersion": 1,
     "fileHash": "sha256-a4043ae3190515615ffc46502ddcb7ef228c50270f18a057ecc40ea87c955434"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/SuperStream.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/SuperStream.cs3",
     "status": 1,
     "version": 44,
     "name": "STxLEO Ultra 4K Server",
@@ -180,7 +180,7 @@
     ],
     "description": "Netflix, Prime & Hollywood 4K Ultra HD Server",
     "fileSize": 252930,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
       "AsianDrama",
@@ -190,12 +190,12 @@
       "Cartoon",
       "AnimeMovie"
     ],
-    "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.showbox.media/&size=256",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/SuperStream.png",
     "apiVersion": 1,
     "fileHash": "sha256-b03171259ab390bd476b65cb6ff6c4c81e1c555f42fcb9355af681b5b118da46"
   },
   {
-    "url": "https://raw.githubusercontent.com/phisher98/cloudstream-extensions-phisher/builds/UHDmoviesProvider.cs3",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/UHDmoviesProvider.cs3",
     "status": 1,
     "version": 45,
     "name": "STxLEO UHD Movies",
@@ -205,13 +205,13 @@
     ],
     "description": "Direct 4K UHD Movies Server",
     "fileSize": 127577,
-    "repositoryUrl": "https://github.com/phisher98/cloudstream-extensions-phisher",
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/LikDev-256/likdev256-tamil-providers/master/UHDmoviesProvider/icon.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/UHDmoviesProvider.png",
     "apiVersion": 1,
     "fileHash": "sha256-1bd0942114b931de000a6b9dbec3870d19d1ca24875ff4b6081da550aa46f4a0"
   }
