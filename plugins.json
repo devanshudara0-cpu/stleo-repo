@@ -214,5 +214,145 @@
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/UHDmoviesProvider.png",
     "apiVersion": 1,
     "fileHash": "sha256-612b58632a82cc961abb5705349ffa0c2ba222396cbb1a696f624727e8898287"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/TorraStream.leo",
+    "status": 1,
+    "version": 99,
+    "name": "LEOVONIX TorraStream 4K (60 FPS & Remux)",
+    "internalName": "TorraStream",
+    "authors": [
+      "Devanshu (@Dara_OG)"
+    ],
+    "description": "Official #1 4K 60FPS Torrent & Remux Engine with Real-Debrid / Torrentio Support",
+    "fileSize": 333485,
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
+    "language": "en",
+    "tvTypes": [
+      "Movie",
+      "Torrent",
+      "AsianDrama",
+      "TvSeries",
+      "Anime"
+    ],
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/TorraStream.png",
+    "apiVersion": 1,
+    "fileHash": "sha256-e500f1ce0901477b06477aafe6ddf896aaed9eb1988730e695ab5871314f326a"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/StreamPlay.leo",
+    "status": 1,
+    "version": 715,
+    "name": "LEOVONIX StreamPlay 4K Ultra",
+    "internalName": "StreamPlay",
+    "authors": [
+      "Devanshu (@Dara_OG)"
+    ],
+    "description": "Flagship Multi-Source 4K Streaming Engine with Zero Buffering",
+    "fileSize": 2228053,
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
+    "language": "en",
+    "tvTypes": [
+      "AsianDrama",
+      "TvSeries",
+      "Anime",
+      "Movie",
+      "Cartoon",
+      "AnimeMovie"
+    ],
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/StreamPlay.png",
+    "apiVersion": 1,
+    "fileHash": "sha256-07cb7ef2ec7324fbab56d7406b4a48432c758f4fca04addc279618c9380e9fad"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/StremioAddon.leo",
+    "status": 1,
+    "version": 18,
+    "name": "LEOVONIX Stremio 4K Connector",
+    "internalName": "StremioAddon",
+    "authors": [
+      "Devanshu (@Dara_OG)"
+    ],
+    "description": "Direct Stremio Addons Engine (Torrentio 4K, CyberFlix & Cinemeta)",
+    "fileSize": 194660,
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
+    "language": "en",
+    "tvTypes": [
+      "TvSeries",
+      "Movie",
+      "Torrent"
+    ],
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/StremioAddon.png",
+    "apiVersion": 1,
+    "fileHash": "sha256-86e597b928af8bd5f9110100f91082900f3b08c6cef3f0ccf6bd844318d608bf"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/YTS.leo",
+    "status": 1,
+    "version": 11,
+    "name": "LEOVONIX YTS 4K Movies",
+    "internalName": "YTS",
+    "authors": [
+      "Devanshu (@Dara_OG)"
+    ],
+    "description": "High-Bitrate 4K & 1080p Cinema Movies Direct Stream",
+    "fileSize": 85168,
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
+    "language": "en",
+    "tvTypes": [
+      "Movie",
+      "Torrent"
+    ],
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/YTS.png",
+    "apiVersion": 1,
+    "fileHash": "sha256-400d43b54aa34d06d2a6e76c21d22990913c39aa70bdcf6f1c37a6b1db8b3cdb"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/ShowBox.leo",
+    "status": 1,
+    "version": 16,
+    "name": "LEOVONIX ShowBox Cloud",
+    "internalName": "ShowBox",
+    "authors": [
+      "Devanshu (@Dara_OG)"
+    ],
+    "description": "Hollywood Blockbusters, Netflix Series & Anime HD/4K",
+    "fileSize": 232921,
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
+    "language": "en",
+    "tvTypes": [
+      "AsianDrama",
+      "Anime",
+      "TvSeries",
+      "Movie"
+    ],
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/ShowBox.png",
+    "apiVersion": 1,
+    "fileHash": "sha256-cf111ad68b3821c1230450e65a1e102be8be75cfceab35419abf636eb56dec12"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/IStreamFlare.leo",
+    "status": 1,
+    "version": 6,
+    "name": "LEOVONIX StreamFlare HD",
+    "internalName": "IStreamFlare",
+    "authors": [
+      "Devanshu (@Dara_OG)"
+    ],
+    "description": "Multi-Language Movies, Hindi Dubbed Series & Anime",
+    "fileSize": 125764,
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
+    "language": "hi",
+    "tvTypes": [
+      "AsianDrama",
+      "TvSeries",
+      "Anime",
+      "Movie",
+      "Cartoon",
+      "AnimeMovie"
+    ],
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/IStreamFlare.png",
+    "apiVersion": 1,
+    "fileHash": "sha256-87374bd01d857ba5e564832b575634c34e56c8bc7bd59cb759db57d9f8f29cdc"
   }
 ]
