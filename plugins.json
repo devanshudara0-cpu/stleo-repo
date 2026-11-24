@@ -218,14 +218,14 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/TorraStream.leo",
     "status": 1,
-    "version": 99,
+    "version": 100,
     "name": "LEOVONIX TorraStream 4K (60 FPS & Remux)",
     "internalName": "TorraStream",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
     "description": "Official #1 4K 60FPS Torrent & Remux Engine with Real-Debrid / Torrentio Support",
-    "fileSize": 333485,
+    "fileSize": 333009,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
@@ -237,19 +237,19 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/TorraStream.png",
     "apiVersion": 1,
-    "fileHash": "sha256-e500f1ce0901477b06477aafe6ddf896aaed9eb1988730e695ab5871314f326a"
+    "fileHash": "sha256-4fba0faa3e563a0485b0423dfb90a907c9f3eb0b3c5fb5cc30a365a0bc3c553b"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/StreamPlay.leo",
     "status": 1,
-    "version": 715,
+    "version": 716,
     "name": "LEOVONIX StreamPlay 4K Ultra",
     "internalName": "StreamPlay",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
     "description": "Flagship Multi-Source 4K Streaming Engine with Zero Buffering",
-    "fileSize": 2228053,
+    "fileSize": 2225827,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
@@ -262,19 +262,19 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/StreamPlay.png",
     "apiVersion": 1,
-    "fileHash": "sha256-07cb7ef2ec7324fbab56d7406b4a48432c758f4fca04addc279618c9380e9fad"
+    "fileHash": "sha256-8c77dc6b00d5a76b7c9dc6e2c394877658ce9ae376a992499ea8fb92d1d32946"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/StremioAddon.leo",
     "status": 1,
-    "version": 18,
+    "version": 19,
     "name": "LEOVONIX Stremio 4K Connector",
     "internalName": "StremioAddon",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
     "description": "Direct Stremio Addons Engine (Torrentio 4K, CyberFlix & Cinemeta)",
-    "fileSize": 194660,
+    "fileSize": 194420,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
@@ -284,7 +284,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/StremioAddon.png",
     "apiVersion": 1,
-    "fileHash": "sha256-86e597b928af8bd5f9110100f91082900f3b08c6cef3f0ccf6bd844318d608bf"
+    "fileHash": "sha256-d01725bb42e31d75d4d78841015a938b2036054e36056d5c17515510975aa5a5"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/YTS.leo",
