@@ -77,42 +77,55 @@ object LeovonixExtractors {
         if (!cleanUrl.startsWith("http") || isArchiveUrl(cleanUrl)) return
 
         if (verifyHttp) {
-            val probeHeaders = mutableMapOf("User-Agent" to UA, "Range" to "bytes=0-1")
+            val probeHeaders = mutableMapOf("User-Agent" to UA)
             if (referer.isNotBlank()) probeHeaders["Referer"] = referer
             probeHeaders.putAll(headers)
 
-            val probe = runCatching {
-                app.get(cleanUrl, headers = probeHeaders, allowRedirects = false)
-            }.getOrNull()
+            for (step in 0 until 2) {
+                val probe = runCatching {
+                    app.head(cleanUrl, headers = probeHeaders, allowRedirects = false, timeout = 12L)
+                }.getOrNull() ?: break
 
-            if (probe != null) {
                 val loc = probe.headers["location"]?.trim()
                 if (probe.code in 300..399 && !loc.isNullOrBlank()) {
-                    val nextUrl = unwrapRedirectQuery(loc)
+                    val nextUrl = unwrapRedirectQuery(DomainManager.fixUrl(loc, cleanUrl) ?: loc)
                     if (isArchiveUrl(nextUrl)) return
                     if (nextUrl.startsWith("http")) {
                         cleanUrl = nextUrl
-                    }
-                } else if (probe.code >= 400) {
-                    Log.w("LeovonixExtractors", "Skipping dead stream (${probe.code}): $cleanUrl")
-                    return
-                } else {
-                    val ct = probe.headers["content-type"]?.lowercase().orEmpty()
-                    if (ct.contains("text/html") || ct.contains("application/zip")) {
-                        val body = probe.text
-                        val nested = Regex("""https?://video-downloads\.googleusercontent\.com/[^\s"'<>]+""")
-                            .find(body)?.value
-                            ?: Regex("""video-seed\.dev/\?url=([^"'\s<>]+)""").find(body)?.groupValues?.get(1)?.let {
-                                runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull()
-                            }
-                        if (!nested.isNullOrBlank() && nested.startsWith("http") && !isArchiveUrl(nested)) {
-                            cleanUrl = nested
-                        } else {
-                            Log.w("LeovonixExtractors", "Skipping non-media response ($ct): $cleanUrl")
-                            return
-                        }
+                        continue
                     }
                 }
+                if (probe.code == 405) {
+                    // Some video CDNs disallow HEAD; allow ExoPlayer GET directly.
+                    break
+                }
+                if (probe.code >= 400) {
+                    Log.w("LeovonixExtractors", "Skipping dead stream (${probe.code}): $cleanUrl")
+                    return
+                }
+                val disp = probe.headers["content-disposition"]?.lowercase().orEmpty()
+                if (disp.contains(".zip") || disp.contains(".rar") || disp.contains(".7z")) {
+                    return
+                }
+                val ct = probe.headers["content-type"]?.lowercase().orEmpty()
+                if (ct.contains("application/zip") || ct.contains("application/x-rar")) {
+                    return
+                }
+                if (ct.contains("text/html")) {
+                    val body = runCatching { app.get(cleanUrl, headers = probeHeaders, timeout = 12L).text }.getOrDefault("")
+                    val nested = Regex("""https?://video-downloads\.googleusercontent\.com/[^\s"'<>]+""")
+                        .find(body)?.value
+                        ?: Regex("""[?&]url=([^"'\s<>]+)""").find(body)?.groupValues?.get(1)?.let {
+                            runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull()
+                        }
+                    if (!nested.isNullOrBlank() && nested.startsWith("http") && !isArchiveUrl(nested)) {
+                        cleanUrl = nested
+                        break
+                    }
+                    Log.w("LeovonixExtractors", "Skipping HTML response ($ct): $cleanUrl")
+                    return
+                }
+                break
             }
         }
 
@@ -593,11 +606,26 @@ object LeovonixExtractors {
         depth: Int,
     ) {
         val base = DomainManager.originOf(url)
-        val doc = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA)).document
+        val res = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA))
+        val html = res.text
+        val doc = res.document
         val headerTitle = doc.selectFirst(".card-header")?.text().orEmpty()
         val q = getQualityFromName(headerTitle).takeIf { it != Qualities.Unknown.value } ?: quality
 
-        val dlBtn = doc.selectFirst("#download[href], a.btn-primary[href*=/drive/], a[href*=hubcloud.php]")?.attr("href")
+        val atob2 = Regex("""atob\(\s*atob\(\s*["']([^"']+)["']\s*\)\s*\)""").find(html)?.groupValues?.get(1)?.let {
+            runCatching { base64Decode(base64Decode(it)).trim() }.getOrNull()
+        }
+        val atob1 = if (atob2.isNullOrBlank()) {
+            Regex("""var\s+url\s*=\s*atob\(\s*["']([^"']+)["']\s*\)""").find(html)?.groupValues?.get(1)?.let {
+                runCatching { base64Decode(it).trim() }.getOrNull()
+            }
+        } else null
+        val varUrl = Regex("""var\s+url\s*=\s*["'](https?://[^"']+)["']""").find(html)?.groupValues?.get(1)
+
+        val dlBtn = atob2?.takeIf { it.startsWith("http") }
+            ?: atob1?.takeIf { it.startsWith("http") }
+            ?: varUrl
+            ?: doc.selectFirst("#download[href], a.btn-primary[href*=/drive/], a[href*=hubcloud.php]")?.attr("href")
         val targetUrl = if (!dlBtn.isNullOrBlank()) DomainManager.fixUrl(dlBtn, base) ?: url else url
         val targetDoc = if (targetUrl != url) {
             app.get(targetUrl, referer = url, headers = mapOf("User-Agent" to UA)).document
