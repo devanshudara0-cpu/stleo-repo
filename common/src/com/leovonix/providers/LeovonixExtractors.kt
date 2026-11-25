@@ -53,9 +53,9 @@ object LeovonixExtractors {
             val inner = cur.substringAfter("dl.php?link=")
             if (inner.startsWith("http")) cur = inner
         }
-        if (cur.contains("video-seed.dev/?url=")) {
-            val encoded = cur.substringAfter("video-seed.dev/?url=").substringBefore("&")
-            runCatching { URLDecoder.decode(encoded, "UTF-8") }.getOrNull()?.let {
+        val urlParamMatch = Regex("""[?&]url=([^&]+)""").find(cur)
+        if (urlParamMatch != null) {
+            runCatching { URLDecoder.decode(urlParamMatch.groupValues[1], "UTF-8") }.getOrNull()?.let {
                 if (it.startsWith("http")) cur = it
             }
         }
