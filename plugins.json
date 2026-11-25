@@ -2,7 +2,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/FourKHDHub.leo",
     "status": 1,
-    "version": 53,
+    "version": 54,
     "name": "LEOVONIX 4KHDHub",
     "internalName": "FourKHDHub",
     "authors": [
@@ -24,7 +24,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDhub4u.leo",
     "status": 1,
-    "version": 63,
+    "version": 64,
     "name": "LEOVONIX HDhub4u",
     "internalName": "HDhub4u",
     "authors": [
@@ -46,7 +46,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/UHDMovies.leo",
     "status": 1,
-    "version": 53,
+    "version": 54,
     "name": "LEOVONIX UHDMovies",
     "internalName": "UHDMovies",
     "authors": [
@@ -67,7 +67,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDMovie2.leo",
     "status": 1,
-    "version": 23,
+    "version": 24,
     "name": "LEOVONIX HDMovie2",
     "internalName": "HDMovie2",
     "authors": [
@@ -88,7 +88,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HindMoviez.leo",
     "status": 1,
-    "version": 28,
+    "version": 29,
     "name": "LEOVONIX HindMoviez",
     "internalName": "HindMoviez",
     "authors": [
@@ -110,7 +110,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MoviesDrive.leo",
     "status": 1,
-    "version": 13,
+    "version": 14,
     "name": "LEOVONIX MoviesDrive",
     "internalName": "MoviesDrive",
     "authors": [
@@ -132,7 +132,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/BollyFlix.leo",
     "status": 1,
-    "version": 13,
+    "version": 14,
     "name": "LEOVONIX BollyFlix",
     "internalName": "BollyFlix",
     "authors": [
@@ -154,7 +154,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MoviesMod.leo",
     "status": 1,
-    "version": 13,
+    "version": 14,
     "name": "LEOVONIX MoviesMod",
     "internalName": "MoviesMod",
     "authors": [
@@ -176,7 +176,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/VegaMovies.leo",
     "status": 1,
-    "version": 13,
+    "version": 14,
     "name": "LEOVONIX VegaMovies",
     "internalName": "VegaMovies",
     "authors": [
@@ -198,7 +198,7 @@
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MultiMovies.leo",
     "status": 1,
-    "version": 63,
+    "version": 64,
     "name": "LEOVONIX MultiMovies",
     "internalName": "MultiMovies",
     "authors": [

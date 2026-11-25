@@ -106,7 +106,8 @@ class HindMoviez : MainAPI() {
     private fun isSupportedLink(u: String): Boolean {
         val l = u.lowercase()
         return l.startsWith("http") && (
-            l.contains("joshapp") || l.contains("gdshine") || l.contains("boldb") ||
+            l.contains("joshapp") || l.contains("mvlink") || l.contains("hshare") ||
+                l.contains("gdshine") || l.contains("boldb") ||
                 l.contains("hubcloud") || l.contains("gdflix") || l.contains("workers.dev")
             )
     }

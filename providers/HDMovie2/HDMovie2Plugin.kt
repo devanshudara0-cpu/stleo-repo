@@ -119,7 +119,7 @@ class HDMovie2 : MainAPI() {
         for (a in doc.select("a[href]")) {
             val href = DomainManager.fixUrl(a.attr("href"), base) ?: continue
             val hl = href.lowercase()
-            if (hl.contains("gdflix") || hl.contains("hubcloud") || hl.contains("hdm2") ||
+            if (hl.contains("gdflix") || hl.contains("hubcloud") || hl.contains("hdm") ||
                 hl.contains("abyss") || hl.contains("ok.ru") || hl.contains("molop")
             ) {
                 targets += href
