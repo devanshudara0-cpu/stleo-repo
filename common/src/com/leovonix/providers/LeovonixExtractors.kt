@@ -2,7 +2,6 @@ package com.leovonix.providers
 
 import com.stleo.api.Log
 import com.stleo.ott.SubtitleFile
-import com.stleo.ott.amap
 import com.stleo.ott.app
 import com.stleo.ott.base64Decode
 import com.stleo.ott.utils.ExtractorLink
@@ -12,6 +11,10 @@ import com.stleo.ott.utils.Qualities
 import com.stleo.ott.utils.getQualityFromName
 import com.stleo.ott.utils.loadExtractor
 import com.stleo.ott.utils.newExtractorLink
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.supervisorScope
+import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.net.URLDecoder
@@ -19,6 +22,32 @@ import java.net.URLDecoder
 object LeovonixExtractors {
     const val UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+
+    suspend fun <T> List<T>.safeForEach(block: suspend (T) -> Unit) = supervisorScope {
+        map { item ->
+            async {
+                runCatching { block(item) }
+                    .onFailure { Log.e("LeovonixExtractors", "Task failed: ${it.message}") }
+            }
+        }.awaitAll()
+    }
+
+    fun parsePayloadUrls(data: String): List<String> {
+        val trimmed = data.trim()
+        val jsonCandidate = when {
+            trimmed.startsWith("[") -> trimmed
+            trimmed.contains("[\"http") -> "[" + trimmed.substringAfter("[")
+            else -> null
+        }
+        if (jsonCandidate != null) {
+            runCatching {
+                val arr = JSONArray(jsonCandidate)
+                val out = (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
+                if (out.isNotEmpty()) return out
+            }
+        }
+        return if (trimmed.isNotBlank()) listOf(trimmed) else emptyList()
+    }
 
     private val REDIRECT_REGEX = Regex("""s\('o','([A-Za-z0-9+/=]+)'|ck\('_wp_http_\d+','([^']+)'""")
     private val LP_FORM_REGEX = Regex("""(?is)<form[^>]*action=["']([^"']+)["'][^>]*>(.*?)</form>""")
@@ -324,7 +353,7 @@ object LeovonixExtractors {
                                 !hl.contains("uploadmaza") && !hl.contains("t.me") && !hl.contains("hdm.im")
                         }
                         .distinct()
-                    links.amap { target ->
+                    links.safeForEach { target ->
                         resolveLinks(target, sourceName, url, q, subtitleCallback, callback, depth + 1)
                     }
                 }
@@ -350,7 +379,7 @@ object LeovonixExtractors {
                             ) href else null
                         }
                         .distinct()
-                    links.amap { target ->
+                    links.safeForEach { target ->
                         resolveLinks(target, sourceName, url, q, subtitleCallback, callback, depth + 1)
                     }
                 }
@@ -377,7 +406,7 @@ object LeovonixExtractors {
                                 )
                         }
                         .distinct()
-                    links.amap { target ->
+                    links.safeForEach { target ->
                         resolveLinks(target, sourceName, url, q, subtitleCallback, callback, depth + 1)
                     }
                 }
@@ -399,7 +428,7 @@ object LeovonixExtractors {
                     val links = doc.select("h3 a[href], div.entry-content a[href], a.btn[href]")
                         .mapNotNull { it.attr("href").trim().takeIf { h -> h.startsWith("http") && !h.contains("hblinks") && !h.contains("t.me") } }
                         .distinct()
-                    links.amap { target ->
+                    links.safeForEach { target ->
                         resolveLinks(target, sourceName, url, q, subtitleCallback, callback, depth + 1)
                     }
                 }
@@ -455,7 +484,7 @@ object LeovonixExtractors {
                         .distinct()
                         .toList()
                     if (embeds.isNotEmpty()) {
-                        embeds.amap { emb ->
+                        embeds.safeForEach { emb ->
                             loadExtractor(emb, base, subtitleCallback, callback)
                         }
                     } else {
@@ -514,8 +543,8 @@ object LeovonixExtractors {
         val q = getQualityFromName(fileTitle).takeIf { it != Qualities.Unknown.value } ?: quality
 
         val links = doc.select("a.btn[href], a[href*=workers.dev], a[href*=drivebot], a[href*=pixeldrain], a[href*=hubcloud], a[href*=gofile]")
-        links.toList().amap { a ->
-            val href = DomainManager.fixUrl(a.attr("href"), base) ?: return@amap
+        links.toList().safeForEach { a ->
+            val href = DomainManager.fixUrl(a.attr("href"), base) ?: return@safeForEach
             val text = a.text()
             val hl = href.lowercase()
             when {
@@ -571,9 +600,9 @@ object LeovonixExtractors {
         }
 
         val links = doc.select("a.btn[href], div.text-center a[href]")
-        links.toList().amap { a ->
+        links.toList().safeForEach { a ->
             val rawHref = a.attr("href").trim()
-            val href = DomainManager.fixUrl(rawHref, base) ?: return@amap
+            val href = DomainManager.fixUrl(rawHref, base) ?: return@safeForEach
             val text = a.text()
             val hl = href.lowercase()
             when {
@@ -654,12 +683,12 @@ object LeovonixExtractors {
             doc
         }
 
-        targetDoc.select("a.btn[href]").toList().amap { a ->
-            val href = DomainManager.fixUrl(a.attr("href").trim(), base) ?: return@amap
+        targetDoc.select("a.btn[href]").toList().safeForEach { a ->
+            val href = DomainManager.fixUrl(a.attr("href").trim(), base) ?: return@safeForEach
             val text = a.text().trim()
             val hl = href.lowercase()
             val tl = text.lowercase()
-            if (isArchiveUrl(href) || tl.contains("zipdisk") || tl.contains("telegram")) return@amap
+            if (isArchiveUrl(href) || tl.contains("zipdisk") || tl.contains("telegram")) return@safeForEach
 
             when {
                 hl.contains("pixeldrain") -> {
@@ -690,7 +719,7 @@ object LeovonixExtractors {
         val html = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA)).text
         val matches = SWITCH_SERVER_REGEX.findAll(html).toList()
         if (matches.isNotEmpty()) {
-            matches.amap { m ->
+            matches.safeForEach { m ->
                 val embed = DomainManager.fixUrl(m.groupValues[1], base)
                 if (embed != null && !embed.contains("modiplay")) {
                     resolveLinks(embed, sourceName, url, quality, subtitleCallback, callback, depth + 1)
@@ -708,7 +737,7 @@ object LeovonixExtractors {
             .distinct()
             .toList()
         if (embeds.isNotEmpty()) {
-            embeds.amap { emb ->
+            embeds.safeForEach { emb ->
                 resolveLinks(emb, sourceName, url, quality, subtitleCallback, callback, depth + 1)
             }
         } else {

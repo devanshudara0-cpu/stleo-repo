@@ -13,7 +13,7 @@ import com.stleo.ott.SearchResponse
 import com.stleo.ott.SearchResponseList
 import com.stleo.ott.SubtitleFile
 import com.stleo.ott.TvType
-import com.stleo.ott.amap
+import com.leovonix.providers.LeovonixExtractors.safeForEach
 import com.stleo.ott.app
 import com.stleo.ott.mainPageOf
 import com.stleo.ott.newEpisode
@@ -183,14 +183,11 @@ class HDMovie2 : MainAPI() {
             val doc = app.get(data, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
             extractPlayerTargets(doc, base, data)
         } else {
-            runCatching {
-                val arr = JSONArray(data)
-                (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
-            }.getOrElse { listOf(data) }
+            LeovonixExtractors.parsePayloadUrls(data)
         }
         if (items.isEmpty()) return false
 
-        items.amap { entry ->
+        items.safeForEach { entry ->
             runCatching {
                 if (entry.startsWith("ajax::")) {
                     val parts = entry.removePrefix("ajax::").split(":::")

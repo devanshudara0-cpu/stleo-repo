@@ -13,7 +13,7 @@ import com.stleo.ott.SearchResponse
 import com.stleo.ott.SearchResponseList
 import com.stleo.ott.SubtitleFile
 import com.stleo.ott.TvType
-import com.stleo.ott.amap
+import com.leovonix.providers.LeovonixExtractors.safeForEach
 import com.stleo.ott.app
 import com.stleo.ott.mainPageOf
 import com.stleo.ott.newEpisode
@@ -182,7 +182,7 @@ class HDhub4u : MainAPI() {
             if (grouped.size > 1) {
                 val episodes = grouped.entries.mapIndexed { i, (epName, urls) ->
                     val num = Regex("""(\d+)""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: (i + 1)
-                    newEpisode(JSONArray(urls.distinct()).toString()) {
+                    newEpisode(JSONArray(urls.distinct()).toString(), fix = false) {
                         this.name = epName
                         this.season = 1
                         this.episode = num
@@ -213,12 +213,9 @@ class HDhub4u : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val urls = runCatching {
-            val arr = JSONArray(data)
-            (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
-        }.getOrElse { listOf(data) }
+        val urls = LeovonixExtractors.parsePayloadUrls(data)
         if (urls.isEmpty()) return false
-        urls.amap { target ->
+        urls.safeForEach { target ->
             runCatching {
                 LeovonixExtractors.resolveLinks(target, name, mainUrl, null, subtitleCallback, callback)
             }.onFailure {
