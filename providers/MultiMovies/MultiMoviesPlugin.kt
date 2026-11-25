@@ -1,0 +1,178 @@
+package com.leovonix.providers.multimovies
+
+import android.content.Context
+import com.leovonix.providers.DomainManager
+import com.leovonix.providers.LeovonixExtractors
+import com.stleo.api.Log
+import com.stleo.ott.Episode
+import com.stleo.ott.HomePageResponse
+import com.stleo.ott.LoadResponse
+import com.stleo.ott.MainAPI
+import com.stleo.ott.MainPageRequest
+import com.stleo.ott.SearchResponse
+import com.stleo.ott.SearchResponseList
+import com.stleo.ott.SubtitleFile
+import com.stleo.ott.TvType
+import com.stleo.ott.amap
+import com.stleo.ott.app
+import com.stleo.ott.mainPageOf
+import com.stleo.ott.newEpisode
+import com.stleo.ott.newHomePageResponse
+import com.stleo.ott.newMovieLoadResponse
+import com.stleo.ott.newMovieSearchResponse
+import com.stleo.ott.newSearchResponseList
+import com.stleo.ott.newTvSeriesLoadResponse
+import com.stleo.ott.newTvSeriesSearchResponse
+import com.stleo.ott.plugins.LeoPlugin
+import com.stleo.ott.plugins.Plugin
+import com.stleo.ott.utils.ExtractorLink
+import org.json.JSONArray
+import org.jsoup.nodes.Element
+import java.net.URLEncoder
+
+@LeoPlugin
+class MultiMoviesPlugin : Plugin() {
+    override fun load(context: Context) {
+        registerMainAPI(MultiMovies())
+    }
+}
+
+class MultiMovies : MainAPI() {
+    override var mainUrl = "https://m1.multimovies.courses"
+    override var name = "MultiMovies"
+    override var lang = "hi"
+    override val hasMainPage = true
+    override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.Anime, TvType.AnimeMovie)
+
+    override val mainPage = mainPageOf(
+        "trending" to "Trending",
+        "movies" to "Latest Movies",
+        "series" to "Latest TV Shows",
+        "genre/anime-series" to "Anime Series",
+        "genre/bollywood-movies" to "Bollywood",
+        "genre/hollywood" to "Hollywood",
+        "genre/south-indian" to "South Indian",
+        "genre/netflix" to "Netflix",
+    )
+
+    private suspend fun activeBase(): String {
+        val base = DomainManager.getDomain("multimovies", mainUrl)
+        mainUrl = base
+        return base
+    }
+
+    private fun Element.toCard(base: String): SearchResponse? {
+        val a = selectFirst("a.poster-art[href], a[href]") ?: return null
+        val href = DomainManager.normalizeWithBase(a.attr("href"), base)
+        val rawTitle = selectFirst(".poster-title, h3, h2, .title")?.text()?.ifBlank { null }
+            ?: a.attr("title").ifBlank { selectFirst("img")?.attr("alt").orEmpty() }
+        val title = DomainManager.cleanTitle(rawTitle)
+        if (title.isBlank()) return null
+        val poster = DomainManager.extractPoster(this, base)
+        val isSeries = href.contains("/series/", true) || href.contains("/tvshows/", true)
+        return if (isSeries) {
+            newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
+                posterUrl = poster
+                quality = DomainManager.guessQuality(title)
+            }
+        } else {
+            newMovieSearchResponse(title, href, TvType.Movie) {
+                posterUrl = poster
+                quality = DomainManager.guessQuality(title)
+            }
+        }
+    }
+
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        val base = activeBase()
+        val path = request.data.trim('/')
+        val url = if (page <= 1) "$base/$path" else "$base/$path?page=$page"
+        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val items = doc.select("article.poster-card").mapNotNull { it.toCard(base) }
+        return newHomePageResponse(request.name, items, items.isNotEmpty())
+    }
+
+    override suspend fun search(query: String, page: Int): SearchResponseList? {
+        val base = activeBase()
+        val q = URLEncoder.encode(query.trim(), "UTF-8")
+        val url = "$base/search?q=$q&page=$page"
+        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val items = doc.select("article.poster-card").mapNotNull { it.toCard(base) }
+        return newSearchResponseList(items, items.isNotEmpty())
+    }
+
+    override suspend fun load(url: String): LoadResponse? {
+        val base = activeBase()
+        val normalized = DomainManager.normalizeWithBase(url, base)
+        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val title = DomainManager.cleanTitle(
+            doc.selectFirst("h1")?.text().orEmpty()
+        ).ifBlank { "MultiMovies Title" }
+        val poster = DomainManager.extractPoster(doc.selectFirst(".watch-poster, .poster, main") ?: doc.body(), base)
+        val plotText = doc.selectFirst(".watch-overview, .overview, .synopsis, p")?.text()
+        val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(doc.select(".watch-meta, .meta").text().ifBlank { title })?.groupValues?.get(1)?.toIntOrNull()
+
+        val epCards = doc.select("a[href*=/watch/series/], a[href*=/episode/]")
+        if (epCards.isNotEmpty()) {
+            val episodes = epCards.mapIndexedNotNull { idx, a ->
+                val epUrl = DomainManager.normalizeWithBase(a.attr("href"), base)
+                val epName = a.text().trim().ifBlank { "Episode ${idx + 1}" }
+                val sNum = Regex("""(?i)S(\d+)""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                val eNum = Regex("""(?i)E(\d+)|Episode\s*(\d+)""").find(epName)?.let {
+                    it.groupValues[1].ifBlank { it.groupValues[2] }.toIntOrNull()
+                } ?: (idx + 1)
+                newEpisode(epUrl) {
+                    this.name = epName
+                    this.season = sNum
+                    this.episode = eNum
+                    this.posterUrl = DomainManager.extractPoster(a, base) ?: poster
+                }
+            }.distinctBy { it.data }
+            if (episodes.isNotEmpty()) {
+                return newTvSeriesLoadResponse(title, normalized, TvType.TvSeries, episodes) {
+                    posterUrl = poster
+                    year = yearVal
+                    plot = plotText
+                }
+            }
+        }
+
+        val serverUrls = doc.select("button.server-chip[data-url], [data-url]")
+            .mapNotNull { DomainManager.fixUrl(it.attr("data-url"), base) }
+            .distinct()
+        return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(serverUrls).toString()) {
+            posterUrl = poster
+            year = yearVal
+            plot = plotText
+        }
+    }
+
+    override suspend fun loadLinks(
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ): Boolean {
+        val base = activeBase()
+        val urls = if (data.startsWith("http")) {
+            val doc = app.get(data, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+            doc.select("button.server-chip[data-url], [data-url]")
+                .mapNotNull { DomainManager.fixUrl(it.attr("data-url"), base) }
+                .distinct()
+        } else {
+            runCatching {
+                val arr = JSONArray(data)
+                (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
+            }.getOrElse { listOf(data) }
+        }
+        if (urls.isEmpty()) return false
+        urls.amap { target ->
+            runCatching {
+                LeovonixExtractors.resolveLinks(target, name, base, null, subtitleCallback, callback)
+            }.onFailure {
+                Log.e("MultiMovies", "Link failed $target: ${it.message}")
+            }
+        }
+        return true
+    }
+}

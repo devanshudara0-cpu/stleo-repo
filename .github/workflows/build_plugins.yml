@@ -1,0 +1,128 @@
+name: Build LEOVONIX Extensions
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'common/**'
+      - 'providers/**'
+      - 'plugins.json'
+      - '.github/workflows/build_plugins.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Download Kotlin compiler & LEOVONIX SDK
+        run: |
+          mkdir -p .build-tools
+          curl -fsSL -o .build-tools/kotlinc.zip https://github.com/JetBrains/kotlin/releases/download/v2.4.21/kotlin-compiler-2.4.21.zip
+          unzip -q .build-tools/kotlinc.zip -d .build-tools
+          curl -fsSL -o .build-tools/leovonix-plugin-sdk.jar https://github.com/devanshudara0-cpu/STxLEO_OTT/releases/download/v1.0/leovonix-plugin-sdk.jar
+          ls -lh .build-tools/leovonix-plugin-sdk.jar
+
+      - name: Compile and Package All 10 Extensions
+        run: |
+          KOTLINC="$PWD/.build-tools/kotlinc/bin/kotlinc"
+          SDK_JAR="$PWD/.build-tools/leovonix-plugin-sdk.jar"
+          ANDROID_JAR=$(ls -d "$ANDROID_HOME"/platforms/android-*/android.jar | sort -V | tail -n 1)
+          D8_BIN=$(ls -d "$ANDROID_HOME"/build-tools/*/d8 | sort -V | tail -n 1)
+          echo "Using ANDROID_JAR=$ANDROID_JAR"
+          echo "Using D8_BIN=$D8_BIN"
+
+          mkdir -p builds
+
+          build_plugin() {
+            local NAME="$1"
+            local CLASS="$2"
+            local VERSION="$3"
+            local SRC_FILE="$4"
+
+            echo "=== Building $NAME ($CLASS v$VERSION) ==="
+            local OUT_CLS=".build-out/$NAME/classes"
+            local OUT_DEX=".build-out/$NAME/dex"
+            rm -rf ".build-out/$NAME"
+            mkdir -p "$OUT_CLS" "$OUT_DEX"
+
+            "$KOTLINC" -jvm-target 11 -cp "$SDK_JAR:$ANDROID_JAR" -d "$OUT_CLS" \
+              common/src/com/leovonix/providers/*.kt \
+              "$SRC_FILE"
+
+            mapfile -t CLASS_FILES < <(find "$OUT_CLS" -name '*.class')
+            "$D8_BIN" --min-api 23 --lib "$ANDROID_JAR" --classpath "$SDK_JAR" --output "$OUT_DEX" "${CLASS_FILES[@]}"
+
+            cat > "$OUT_DEX/manifest.json" <<EOF
+          {"name":"$NAME","pluginClassName":"$CLASS","version":$VERSION,"requiresResources":false}
+          EOF
+
+            rm -f "builds/$NAME.leo"
+            (cd "$OUT_DEX" && zip -q -r "$OLDPWD/builds/$NAME.leo" manifest.json classes*.dex)
+          }
+
+          build_plugin "FourKHDHub"  "com.leovonix.providers.fourkhdhub.FourKHDHubPlugin"   50 "providers/FourKHDHub/FourKHDHubPlugin.kt"
+          build_plugin "HDhub4u"     "com.leovonix.providers.hdhub4u.HDhub4uPlugin"         60 "providers/HDhub4u/HDhub4uPlugin.kt"
+          build_plugin "UHDMovies"   "com.leovonix.providers.uhdmovies.UHDMoviesPlugin"     50 "providers/UHDMovies/UHDMoviesPlugin.kt"
+          build_plugin "HDMovie2"    "com.leovonix.providers.hdmovie2.HDMovie2Plugin"       20 "providers/HDMovie2/HDMovie2Plugin.kt"
+          build_plugin "HindMoviez"  "com.leovonix.providers.hindmoviez.HindMoviezPlugin"   25 "providers/HindMoviez/HindMoviezPlugin.kt"
+          build_plugin "MoviesDrive" "com.leovonix.providers.moviesdrive.MoviesDrivePlugin" 10 "providers/MoviesDrive/MoviesDrivePlugin.kt"
+          build_plugin "BollyFlix"   "com.leovonix.providers.bollyflix.BollyFlixPlugin"     10 "providers/BollyFlix/BollyFlixPlugin.kt"
+          build_plugin "MoviesMod"   "com.leovonix.providers.moviesmod.MoviesModPlugin"     10 "providers/MoviesMod/MoviesModPlugin.kt"
+          build_plugin "VegaMovies"  "com.leovonix.providers.vegamovies.VegaMoviesPlugin"   10 "providers/VegaMovies/VegaMoviesPlugin.kt"
+          build_plugin "MultiMovies" "com.leovonix.providers.multimovies.MultiMoviesPlugin" 60 "providers/MultiMovies/MultiMoviesPlugin.kt"
+
+          python3 - <<'PY'
+          import hashlib, json, os, zipfile
+
+          with open("plugins.json", "r", encoding="utf-8") as f:
+              plugins = json.load(f)
+
+          for p in plugins:
+              name = p["internalName"]
+              leo = f"builds/{name}.leo"
+              assert os.path.exists(leo), f"Missing {leo}"
+              with zipfile.ZipFile(leo) as z:
+                  for entry in z.namelist():
+                      data = z.read(entry).lower()
+                      for bad in (b"cloudstream", b"recloudstream", b"com/lagradost/api", b"phisher", b"omg10"):
+                          if bad in data:
+                              raise SystemExit(f"Forbidden token {bad!r} found in {leo}:{entry}")
+              size = os.path.getsize(leo)
+              sha = hashlib.sha256(open(leo, "rb").read()).hexdigest()
+              p["fileSize"] = size
+              p["fileHash"] = f"sha256-{sha}"
+              p["status"] = 1
+              p["apiVersion"] = 1
+              print(f"Verified {name}.leo: size={size}, sha256={sha[:16]}...")
+
+          with open("plugins.json", "w", encoding="utf-8") as f:
+              json.dump(plugins, f, indent=2)
+              f.write("\n")
+          PY
+
+      - name: Commit & Push Built Extensions
+        run: |
+          rm -rf .build-tools .build-out
+          git config user.name "leovonix-bot"
+          git config user.email "bot@leovonix.local"
+          git add builds/*.leo plugins.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(build): compile all 10 clean LEOVONIX extensions [skip ci]"
+            git push origin HEAD:main
+          else
+            echo "No changes to push"
+          fi
