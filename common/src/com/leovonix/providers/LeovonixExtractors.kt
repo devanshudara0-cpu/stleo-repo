@@ -14,7 +14,7 @@ import com.stleo.ott.utils.loadExtractor
 import com.stleo.ott.utils.newExtractorLink
 import org.json.JSONObject
 import org.jsoup.Jsoup
-import java.net.URI
+import java.net.URLDecoder
 
 object LeovonixExtractors {
     const val UA =
@@ -40,6 +40,28 @@ object LeovonixExtractors {
         return out.toString()
     }
 
+    private fun isArchiveUrl(url: String): Boolean {
+        val lower = url.lowercase()
+        val path = lower.substringBefore("?")
+        return path.endsWith(".zip") || path.endsWith(".rar") || path.endsWith(".7z") ||
+            lower.contains(".zip&") || lower.contains(".zip%22") || lower.contains(".zip\"")
+    }
+
+    private fun unwrapRedirectQuery(url: String): String {
+        var cur = url.replace("&amp;", "&").trim()
+        if (cur.contains("dl.php?link=")) {
+            val inner = cur.substringAfter("dl.php?link=")
+            if (inner.startsWith("http")) cur = inner
+        }
+        if (cur.contains("video-seed.dev/?url=")) {
+            val encoded = cur.substringAfter("video-seed.dev/?url=").substringBefore("&")
+            runCatching { URLDecoder.decode(encoded, "UTF-8") }.getOrNull()?.let {
+                if (it.startsWith("http")) cur = it
+            }
+        }
+        return cur
+    }
+
     suspend fun emitDirectLink(
         source: String,
         label: String,
@@ -48,15 +70,58 @@ object LeovonixExtractors {
         quality: Int = Qualities.Unknown.value,
         isM3u8: Boolean = url.contains(".m3u8", ignoreCase = true),
         headers: Map<String, String> = emptyMap(),
+        verifyHttp: Boolean = !isM3u8,
         callback: (ExtractorLink) -> Unit,
     ) {
-        val cleanUrl = url.replace("&amp;", "&").trim()
-        if (!cleanUrl.startsWith("http")) return
+        var cleanUrl = unwrapRedirectQuery(url)
+        if (!cleanUrl.startsWith("http") || isArchiveUrl(cleanUrl)) return
+
+        if (verifyHttp) {
+            val probeHeaders = mutableMapOf("User-Agent" to UA, "Range" to "bytes=0-1")
+            if (referer.isNotBlank()) probeHeaders["Referer"] = referer
+            probeHeaders.putAll(headers)
+
+            val probe = runCatching {
+                app.get(cleanUrl, headers = probeHeaders, allowRedirects = false)
+            }.getOrNull()
+
+            if (probe != null) {
+                val loc = probe.headers["location"]?.trim()
+                if (probe.code in 300..399 && !loc.isNullOrBlank()) {
+                    val nextUrl = unwrapRedirectQuery(loc)
+                    if (isArchiveUrl(nextUrl)) return
+                    if (nextUrl.startsWith("http")) {
+                        cleanUrl = nextUrl
+                    }
+                } else if (probe.code >= 400) {
+                    Log.w("LeovonixExtractors", "Skipping dead stream (${probe.code}): $cleanUrl")
+                    return
+                } else {
+                    val ct = probe.headers["content-type"]?.lowercase().orEmpty()
+                    if (ct.contains("text/html") || ct.contains("application/zip")) {
+                        val body = probe.text
+                        val nested = Regex("""https?://video-downloads\.googleusercontent\.com/[^\s"'<>]+""")
+                            .find(body)?.value
+                            ?: Regex("""video-seed\.dev/\?url=([^"'\s<>]+)""").find(body)?.groupValues?.get(1)?.let {
+                                runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull()
+                            }
+                        if (!nested.isNullOrBlank() && nested.startsWith("http") && !isArchiveUrl(nested)) {
+                            cleanUrl = nested
+                        } else {
+                            Log.w("LeovonixExtractors", "Skipping non-media response ($ct): $cleanUrl")
+                            return
+                        }
+                    }
+                }
+            }
+        }
+
+        if (isArchiveUrl(cleanUrl)) return
         val link = newExtractorLink(
             source = source,
             name = label,
             url = cleanUrl,
-            type = if (isM3u8) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO,
+            type = if (isM3u8 || cleanUrl.contains(".m3u8", true)) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO,
         ) {
             this.quality = quality
             this.referer = referer
@@ -71,8 +136,7 @@ object LeovonixExtractors {
         if (!url.startsWith("http")) return url
         val lower = url.lowercase()
 
-        // Fast-path: already a final host
-        if (lower.contains("hubcloud.") && !lower.contains("search-recover") ||
+        if ((lower.contains("hubcloud.") || lower.contains("vcloud.")) && !lower.contains("search-recover") ||
             lower.contains("gdflix.") || lower.contains("driveseed.") || lower.contains("driveleech.") ||
             lower.contains("hubdrive.") || lower.contains("gdshine.") || lower.contains("gofile.io") ||
             lower.contains("pixeldrain.")
@@ -80,7 +144,6 @@ object LeovonixExtractors {
             return url
         }
 
-        // Handle _lp_ safelinks (thenaukriadda, tech.*, unblocked*) or ROT13 JS redirectors (greenmotors, gadgetsweb)
         val cookies = mutableMapOf<String, String>()
         var currentUrl = url
         var currentRef = referer ?: url
@@ -150,12 +213,13 @@ object LeovonixExtractors {
                 val goHdrs = mutableMapOf("User-Agent" to UA, "Referer" to landedUrl)
                 goHdrs["Cookie"] = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
                 val finalRes = runCatching { app.get(goUrl, headers = goHdrs, allowRedirects = false) }.getOrNull()
-                val loc = finalRes?.headers?.get("location")?.trim()
+                val loc = finalRes?.headers?.get("location")?.trim()?.replace("\\/", "/")
                 if (!loc.isNullOrBlank() && loc.startsWith("http")) return loc
                 val finalUrl = finalRes?.url?.trim()
                 if (!finalUrl.isNullOrBlank() && finalUrl != goUrl && !finalUrl.contains("lp_go=")) return finalUrl
                 val body = finalRes?.text.orEmpty()
-                val locJs = Regex("""(?:location\.href|window\.location(?:\.href)?|location\.replace)\s*(?:=|\()\s*["']([^"']+)["']""").find(body)?.groupValues?.get(1)
+                val locJs = Regex("""(?:location\.href|window\.location(?:\.href)?|location\.replace)\s*(?:=|\()\s*["']([^"']+)["']""")
+                    .find(body)?.groupValues?.get(1)?.replace("\\/", "/")?.trim()
                 if (!locJs.isNullOrBlank() && locJs.startsWith("http")) return locJs
                 val directA = Jsoup.parse(body, goUrl).selectFirst("a[href*=hubcloud], a[href*=driveseed], a[href*=driveleech], a[href*=gdflix], a[href*=fastdl], a[href*=workers.dev], a.btn[href]")?.attr("href")
                 if (!directA.isNullOrBlank() && directA.startsWith("http")) return directA
@@ -178,12 +242,12 @@ object LeovonixExtractors {
             }
 
             // 4) JS / meta redirect inside body
-            val jsRedir = Regex("""(?:window\.location(?:\.href)?|location\.replace)\s*(?:=|\()\s*["'](https?://[^"']+)["']""").find(html)?.groupValues?.get(1)
-            if (!jsRedir.isNullOrBlank() && jsRedir != landedUrl && !jsRedir.contains("cloudflare") && !jsRedir.contains("google")) {
+            val jsRedir = Regex("""(?:window\.location(?:\.href)?|location\.replace)\s*(?:=|\()\s*["'](https?[^"']+)["']""")
+                .find(html)?.groupValues?.get(1)?.replace("\\/", "/")?.trim()
+            if (!jsRedir.isNullOrBlank() && jsRedir.startsWith("http") && jsRedir != landedUrl && !jsRedir.contains("cloudflare") && !jsRedir.contains("google")) {
                 return jsRedir
             }
 
-            // 5) Check landedUrl change
             if (landedUrl != url && !landedUrl.contains("?sid=") && !landedUrl.contains("?id=")) {
                 return landedUrl
             }
@@ -202,7 +266,9 @@ object LeovonixExtractors {
         depth: Int = 0,
     ) {
         if (depth > 4 || rawUrl.isBlank()) return
-        val cleanInput = DomainManager.fixUrl(rawUrl.replace("&amp;", "&"), referer ?: rawUrl) ?: return
+        val cleanInput = DomainManager.fixUrl(rawUrl.replace("&amp;", "&").replace("\\/", "/"), referer ?: rawUrl) ?: return
+        if (isArchiveUrl(cleanInput)) return
+
         val url = if (
             cleanInput.contains("greenmotors") || cleanInput.contains("gadgetsweb") ||
             cleanInput.contains("thenaukriadda") || cleanInput.contains("unblocked") ||
@@ -218,7 +284,8 @@ object LeovonixExtractors {
 
         try {
             when {
-                lower.contains(".m3u8") || lower.contains(".mp4") || lower.contains(".mkv") || lower.contains(".workers.dev/") -> {
+                lower.contains(".m3u8") || lower.contains(".mp4") || lower.contains(".mkv") ||
+                    lower.contains(".workers.dev/") || lower.contains("video-downloads.googleusercontent.com") -> {
                     emitDirectLink(
                         source = sourceName,
                         label = "$sourceName Direct",
@@ -250,17 +317,27 @@ object LeovonixExtractors {
                             if (hl.startsWith("http") &&
                                 !hl.contains("t.me") && !hl.contains("telegram") && !hl.contains("whatsapp") &&
                                 !hl.contains("wordpress.org") && !hl.contains("templatelens") &&
-                                (hl.contains("hubcloud") || hl.contains("hubdrive") || hl.contains("gdflix") ||
-                                    hl.contains("only-apis") || hl.contains("driveseed") || hl.contains("driveleech") ||
-                                    hl.contains("boldb") || hl.contains("gdshine") || hl.contains("fastdl") ||
-                                    hl.contains("vegadrive") || hl.contains("gofile") || hl.contains("pixeldrain") ||
-                                    hl.contains("thenaukriadda") || hl.contains("greenmotors") || hl.contains("gadgetsweb") ||
+                                (hl.contains("hubcloud") || hl.contains("vcloud") || hl.contains("hubdrive") ||
+                                    hl.contains("gdflix") || hl.contains("only-apis") || hl.contains("driveseed") ||
+                                    hl.contains("driveleech") || hl.contains("boldb") || hl.contains("gdshine") ||
+                                    hl.contains("fastdl") || hl.contains("vegadrive") || hl.contains("gofile") ||
+                                    hl.contains("pixeldrain") || hl.contains("thenaukriadda") ||
+                                    hl.contains("greenmotors") || hl.contains("gadgetsweb") ||
                                     hl.contains("?sid=") || hl.contains("?id="))
                             ) href else null
                         }
                         .distinct()
                     links.amap { target ->
                         resolveLinks(target, sourceName, url, q, subtitleCallback, callback, depth + 1)
+                    }
+                }
+
+                lower.contains("fastdl.beer") || (lower.contains("fastdl.") && !lower.contains("fastdlserver")) -> {
+                    val html = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA)).text
+                    val reurl = Regex("""var\s+reurl\s*=\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                        ?: Jsoup.parse(html, url).selectFirst("a[href*=googleusercontent], a[href*=workers.dev], a.btn[href]")?.attr("href")
+                    if (!reurl.isNullOrBlank()) {
+                        emitDirectLink(sourceName, "$sourceName FastDL", unwrapRedirectQuery(reurl), url, q, callback = callback)
                     }
                 }
 
@@ -312,10 +389,21 @@ object LeovonixExtractors {
                     extractHubCdn(url, sourceName, referer, q, callback)
                 }
 
-                lower.contains("hubcloud.") -> {
-                    val ok = loadExtractor(url, referer, subtitleCallback, callback)
-                    if (!ok) {
-                        extractHubCloudFallback(url, sourceName, referer, q, subtitleCallback, callback, depth)
+                lower.contains("hubcloud.") || lower.contains("vcloud.") -> {
+                    extractHubCloud(url, sourceName, referer, q, subtitleCallback, callback, depth)
+                }
+
+                lower.contains("pixeldrain.") -> {
+                    val id = url.substringAfterLast("/").substringBefore("?")
+                    if (id.isNotBlank()) {
+                        emitDirectLink(
+                            source = sourceName,
+                            label = "$sourceName PixelDrain",
+                            url = "https://pixeldrain.dev/api/file/$id?download",
+                            referer = "https://pixeldrain.dev/",
+                            quality = q,
+                            callback = callback,
+                        )
                     }
                 }
 
@@ -324,7 +412,6 @@ object LeovonixExtractors {
                 }
 
                 lower.contains("iqsmartgames.") -> {
-                    val id = url.substringAfterLast("embed/")
                     val base = DomainManager.originOf(url)
                     val html = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA)).text
                     val embeds = Regex("""https?://[^\s"'`<>]+""").findAll(html).map { it.value }
@@ -343,7 +430,6 @@ object LeovonixExtractors {
                     } else {
                         loadExtractor(url, referer, subtitleCallback, callback)
                     }
-                    Log.d("LeovonixExtractors", "Resolved iqsmartgames id=$id (${embeds.size} embeds)")
                 }
 
                 else -> {
@@ -393,7 +479,8 @@ object LeovonixExtractors {
         val finalUrl = res.url.ifBlank { url }
         val base = DomainManager.originOf(finalUrl)
         val fileTitle = doc.selectFirst("li.list-group-item")?.text().orEmpty()
-        val q = getQualityFromName(fileTitle).takeIf { it != com.stleo.ott.utils.Qualities.Unknown.value } ?: quality
+        if (isArchiveUrl(fileTitle)) return
+        val q = getQualityFromName(fileTitle).takeIf { it != Qualities.Unknown.value } ?: quality
 
         val links = doc.select("a.btn[href], a[href*=workers.dev], a[href*=drivebot], a[href*=pixeldrain], a[href*=hubcloud], a[href*=gofile]")
         links.toList().amap { a ->
@@ -439,8 +526,8 @@ object LeovonixExtractors {
         var doc = res.document
         var curUrl = res.url.ifBlank { url }
 
-        // Handle JS redirect window.location.replace("/zfile/...") or "/file/..."
-        val jsPath = Regex("""window\.location\.replace\(["']([^"']+)["']\)""").find(res.text)?.groupValues?.get(1)
+        val jsPath = Regex("""(?:window\.location\.replace|location\.replace)\(\s*["']([^"']+)["']\s*\)""")
+            .find(res.text)?.groupValues?.get(1)?.replace("\\/", "/")
         if (!jsPath.isNullOrBlank()) {
             val next = DomainManager.fixUrl(jsPath, base)
             if (next != null) {
@@ -456,16 +543,12 @@ object LeovonixExtractors {
             val text = a.text()
             val hl = href.lowercase()
             when {
-                text.contains("Instant", ignoreCase = true) || text.contains("Direct", ignoreCase = true) -> {
-                    val inst = runCatching { app.get(href, referer = curUrl, allowRedirects = false) }.getOrNull()
-                    val loc = inst?.headers?.get("location") ?: Regex("""["'](https?://[^"']+\.(?:workers\.dev|r2\.dev)[^"']*)["']""").find(inst?.text.orEmpty())?.groupValues?.get(1)
-                    if (!loc.isNullOrBlank()) {
-                        emitDirectLink(sourceName, "$sourceName Instant", loc, curUrl, quality, callback = callback)
-                    }
+                text.contains("Instant", ignoreCase = true) || text.contains("Direct", ignoreCase = true) || hl.contains("video-gen") -> {
+                    emitDirectLink(sourceName, "$sourceName Instant", href, curUrl, quality, callback = callback)
                 }
                 text.contains("Resume Cloud", ignoreCase = true) || hl.contains("/zfile/") -> {
                     val rDoc = runCatching { app.get(href, referer = curUrl, headers = mapOf("User-Agent" to UA)).document }.getOrNull()
-                    val dLink = rDoc?.selectFirst("a.btn-success[href], a[href*=workers], a[href*=r2]")?.attr("href")
+                    val dLink = rDoc?.selectFirst("a.btn-success[href], a[href*=workers], a[href*=r2], a[href*=googleusercontent]")?.attr("href")
                     if (!dLink.isNullOrBlank()) {
                         emitDirectLink(sourceName, "$sourceName Cloud", dLink, href, quality, callback = callback)
                     }
@@ -500,7 +583,7 @@ object LeovonixExtractors {
         }
     }
 
-    private suspend fun extractHubCloudFallback(
+    private suspend fun extractHubCloud(
         url: String,
         sourceName: String,
         referer: String?,
@@ -509,23 +592,37 @@ object LeovonixExtractors {
         callback: (ExtractorLink) -> Unit,
         depth: Int,
     ) {
+        val base = DomainManager.originOf(url)
         val doc = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA)).document
+        val headerTitle = doc.selectFirst(".card-header")?.text().orEmpty()
+        val q = getQualityFromName(headerTitle).takeIf { it != Qualities.Unknown.value } ?: quality
+
         val dlBtn = doc.selectFirst("#download[href], a.btn-primary[href*=/drive/], a[href*=hubcloud.php]")?.attr("href")
-        val targetDoc = if (!dlBtn.isNullOrBlank() && dlBtn != url) {
-            app.get(DomainManager.fixUrl(dlBtn, DomainManager.originOf(url)) ?: url, referer = url, headers = mapOf("User-Agent" to UA)).document
+        val targetUrl = if (!dlBtn.isNullOrBlank()) DomainManager.fixUrl(dlBtn, base) ?: url else url
+        val targetDoc = if (targetUrl != url) {
+            app.get(targetUrl, referer = url, headers = mapOf("User-Agent" to UA)).document
         } else {
             doc
         }
+
         targetDoc.select("a.btn[href]").toList().amap { a ->
-            val href = a.attr("href").trim()
-            val text = a.text()
+            val href = DomainManager.fixUrl(a.attr("href").trim(), base) ?: return@amap
+            val text = a.text().trim()
             val hl = href.lowercase()
+            val tl = text.lowercase()
+            if (isArchiveUrl(href) || tl.contains("zipdisk") || tl.contains("telegram")) return@amap
+
             when {
-                hl.contains("pixeldrain") || hl.contains("gofile") || hl.contains("hubcdn") -> {
-                    resolveLinks(href, sourceName, url, quality, subtitleCallback, callback, depth + 1)
+                hl.contains("pixeldrain") -> {
+                    resolveLinks(href, sourceName, targetUrl, q, subtitleCallback, callback, depth + 1)
                 }
-                hl.contains("fsl") || hl.contains("r2.dev") || hl.contains("workers.dev") || text.contains("FSL", true) || text.contains("10Gbps", true) -> {
-                    emitDirectLink(sourceName, "$sourceName $text", href, url, quality, callback = callback)
+                hl.contains("gofile") || hl.contains("hubcdn") -> {
+                    resolveLinks(href, sourceName, targetUrl, q, subtitleCallback, callback, depth + 1)
+                }
+                tl.contains("fsl") || tl.contains("10gbps") || tl.contains("server") ||
+                    hl.contains("r2.dev") || hl.contains("r2.cloudflarestorage") ||
+                    hl.contains("workers.dev") || hl.contains("googleusercontent") -> {
+                    emitDirectLink(sourceName, "$sourceName $text", href, targetUrl, q, callback = callback)
                 }
             }
         }

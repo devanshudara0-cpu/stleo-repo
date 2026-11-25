@@ -105,11 +105,14 @@ class UHDMovies : MainAPI() {
 
     private fun isSupportedLink(u: String): Boolean {
         val l = u.lowercase()
+        if (l.contains("?sid=")) {
+            val sidVal = u.substringAfter("?sid=").substringBefore("&")
+            return sidVal.length >= 100
+        }
         return l.startsWith("http") && (
             l.contains("thenaukriadda") || l.contains("unblocked") || l.contains("tech.") ||
                 l.contains("driveseed") || l.contains("driveleech") ||
-                l.contains("hubcloud") || l.contains("gdflix") ||
-                l.contains("?sid=") || l.contains("?id=")
+                l.contains("hubcloud") || l.contains("gdflix") || l.contains("?id=")
             )
     }
 
