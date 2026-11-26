@@ -145,12 +145,16 @@ class FourKHDHub : MainAPI() {
                         ?: 1
                     val epNum = Regex("""E(?:pisode)?\s*0*(\d+)""", RegexOption.IGNORE_CASE).find(epTitle)?.groupValues?.get(1)?.toIntOrNull()
                         ?: (idx + 1)
-                    episodes += newEpisode(JSONArray(links).toString(), fix = false) {
-                        this.name = epTitle
-                        this.season = seasonNum
-                        this.episode = epNum
-                        this.posterUrl = poster
-                    }
+                    episodes += newEpisode(
+                        url = JSONArray(links).toString(),
+                        initializer = {
+                            this.name = epTitle
+                            this.season = seasonNum
+                            this.episode = epNum
+                            this.posterUrl = poster
+                        },
+                        fix = false,
+                    )
                 }
             }
             if (episodes.isNotEmpty()) {

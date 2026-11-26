@@ -182,12 +182,16 @@ class HDhub4u : MainAPI() {
             if (grouped.size > 1) {
                 val episodes = grouped.entries.mapIndexed { i, (epName, urls) ->
                     val num = Regex("""(\d+)""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: (i + 1)
-                    newEpisode(JSONArray(urls.distinct()).toString(), fix = false) {
-                        this.name = epName
-                        this.season = 1
-                        this.episode = num
-                        this.posterUrl = poster
-                    }
+                    newEpisode(
+                        url = JSONArray(urls.distinct()).toString(),
+                        initializer = {
+                            this.name = epName
+                            this.season = 1
+                            this.episode = num
+                            this.posterUrl = poster
+                        },
+                        fix = false,
+                    )
                 }
                 return newTvSeriesLoadResponse(title, normalized, TvType.TvSeries, episodes) {
                     posterUrl = poster

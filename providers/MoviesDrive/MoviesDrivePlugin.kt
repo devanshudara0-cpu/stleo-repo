@@ -162,12 +162,16 @@ class MoviesDrive : MainAPI() {
         }
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
-                newEpisode(JSONArray(urls.distinct()).toString(), fix = false) {
-                    this.name = "Episode $epNum"
-                    this.season = 1
-                    this.episode = epNum
-                    this.posterUrl = poster
-                }
+                newEpisode(
+                    url = JSONArray(urls.distinct()).toString(),
+                    initializer = {
+                        this.name = "Episode $epNum"
+                        this.season = 1
+                        this.episode = epNum
+                        this.posterUrl = poster
+                    },
+                    fix = false,
+                )
             }
             return newTvSeriesLoadResponse(title, normalized, TvType.TvSeries, episodes) {
                 posterUrl = poster

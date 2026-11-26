@@ -74,16 +74,16 @@ jobs:
             (cd "$OUT_DEX" && zip -q -r "$OLDPWD/builds/$NAME.leo" manifest.json classes*.dex)
           }
 
-          build_plugin "FourKHDHub"  "com.leovonix.providers.fourkhdhub.FourKHDHubPlugin"   55 "providers/FourKHDHub/FourKHDHubPlugin.kt"
-          build_plugin "HDhub4u"     "com.leovonix.providers.hdhub4u.HDhub4uPlugin"         65 "providers/HDhub4u/HDhub4uPlugin.kt"
-          build_plugin "UHDMovies"   "com.leovonix.providers.uhdmovies.UHDMoviesPlugin"     55 "providers/UHDMovies/UHDMoviesPlugin.kt"
-          build_plugin "HDMovie2"    "com.leovonix.providers.hdmovie2.HDMovie2Plugin"       25 "providers/HDMovie2/HDMovie2Plugin.kt"
-          build_plugin "HindMoviez"  "com.leovonix.providers.hindmoviez.HindMoviezPlugin"   30 "providers/HindMoviez/HindMoviezPlugin.kt"
-          build_plugin "MoviesDrive" "com.leovonix.providers.moviesdrive.MoviesDrivePlugin" 15 "providers/MoviesDrive/MoviesDrivePlugin.kt"
-          build_plugin "BollyFlix"   "com.leovonix.providers.bollyflix.BollyFlixPlugin"     15 "providers/BollyFlix/BollyFlixPlugin.kt"
-          build_plugin "MoviesMod"   "com.leovonix.providers.moviesmod.MoviesModPlugin"     15 "providers/MoviesMod/MoviesModPlugin.kt"
-          build_plugin "VegaMovies"  "com.leovonix.providers.vegamovies.VegaMoviesPlugin"   15 "providers/VegaMovies/VegaMoviesPlugin.kt"
-          build_plugin "MultiMovies" "com.leovonix.providers.multimovies.MultiMoviesPlugin" 65 "providers/MultiMovies/MultiMoviesPlugin.kt"
+          build_plugin "FourKHDHub"  "com.leovonix.providers.fourkhdhub.FourKHDHubPlugin"   56 "providers/FourKHDHub/FourKHDHubPlugin.kt"
+          build_plugin "HDhub4u"     "com.leovonix.providers.hdhub4u.HDhub4uPlugin"         66 "providers/HDhub4u/HDhub4uPlugin.kt"
+          build_plugin "UHDMovies"   "com.leovonix.providers.uhdmovies.UHDMoviesPlugin"     56 "providers/UHDMovies/UHDMoviesPlugin.kt"
+          build_plugin "HDMovie2"    "com.leovonix.providers.hdmovie2.HDMovie2Plugin"       26 "providers/HDMovie2/HDMovie2Plugin.kt"
+          build_plugin "HindMoviez"  "com.leovonix.providers.hindmoviez.HindMoviezPlugin"   31 "providers/HindMoviez/HindMoviezPlugin.kt"
+          build_plugin "MoviesDrive" "com.leovonix.providers.moviesdrive.MoviesDrivePlugin" 16 "providers/MoviesDrive/MoviesDrivePlugin.kt"
+          build_plugin "BollyFlix"   "com.leovonix.providers.bollyflix.BollyFlixPlugin"     16 "providers/BollyFlix/BollyFlixPlugin.kt"
+          build_plugin "MoviesMod"   "com.leovonix.providers.moviesmod.MoviesModPlugin"     16 "providers/MoviesMod/MoviesModPlugin.kt"
+          build_plugin "VegaMovies"  "com.leovonix.providers.vegamovies.VegaMoviesPlugin"   16 "providers/VegaMovies/VegaMoviesPlugin.kt"
+          build_plugin "MultiMovies" "com.leovonix.providers.multimovies.MultiMoviesPlugin" 66 "providers/MultiMovies/MultiMoviesPlugin.kt"
 
           python3 - <<'PY'
           import hashlib, json, os, zipfile
