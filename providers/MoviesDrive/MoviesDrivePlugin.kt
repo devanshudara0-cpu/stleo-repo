@@ -209,7 +209,7 @@ class MoviesDrive : MainAPI() {
             .filter { isSupportedLink(it) }
             .distinct()
             .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
-        return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(links).toString()) {
+        return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(links, normalized)) {
             posterUrl = poster
             year = yearVal
         }

@@ -151,7 +151,7 @@ class UHDMovies : MainAPI() {
             .distinct()
             .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
 
-        return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(movieLinks).toString()) {
+        return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(movieLinks, normalized)) {
             posterUrl = poster
             year = yearVal
         }

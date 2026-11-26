@@ -163,7 +163,7 @@ class FourKHDHub : MainAPI() {
 
         val downloadRoot = doc.selectFirst(".download-items-grid, .download-section, main") ?: doc.body()
         val links = collectHostLinks(downloadRoot, base)
-        return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(links).toString()) {
+        return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(links, normalized)) {
             posterUrl = poster
             year = yearVal
             plot = plotText

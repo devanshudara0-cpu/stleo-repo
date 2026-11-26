@@ -203,7 +203,7 @@ class HDhub4u : MainAPI() {
             .distinct()
             .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
 
-        return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(allLinks).toString()) {
+        return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(allLinks, normalized)) {
             posterUrl = poster
             year = yearVal
         }

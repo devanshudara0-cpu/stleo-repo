@@ -54,6 +54,9 @@ object LeovonixExtractors {
         return if (trimmed.isNotBlank()) listOf(trimmed) else emptyList()
     }
 
+    fun linkPayload(links: List<String>, fallbackUrl: String): String =
+        if (links.isEmpty()) fallbackUrl else JSONArray(links).toString()
+
     private val REDIRECT_REGEX = Regex(
         """s\(\s*['"]o['"]\s*,\s*['"]([A-Za-z0-9+/=]+)['"]|ck\(\s*['"]_wp_http_\d+['"]\s*,\s*['"]([^'"]+)['"]"""
     )
@@ -233,20 +236,9 @@ object LeovonixExtractors {
             probeHeaders.putAll(headers)
 
             for (step in 0 until 3) {
-                val oneTime = isLikelyOneTimeUrl(cleanUrl)
-                var probe = runCatching {
-                    if (oneTime) probeHead(cleanUrl, probeHeaders)
-                    else probeRange(cleanUrl, probeHeaders)
-                }.getOrElse {
+                val probe = runCatching { probeRange(cleanUrl, probeHeaders) }.getOrElse {
                     Log.w("LeovonixExtractors", "Skipping unreachable stream (${it.message}): $cleanUrl")
                     return
-                }
-                if (oneTime && probe.code >= 400 && probe.code != 405 && probe.code != 416) {
-                    Log.i("LeovonixExtractors", "HEAD unsupported (${probe.code}), retrying with Range: $cleanUrl")
-                    probe = runCatching { probeRange(cleanUrl, probeHeaders) }.getOrElse {
-                        Log.w("LeovonixExtractors", "Skipping unreachable stream (${it.message}): $cleanUrl")
-                        return
-                    }
                 }
 
                 if (probe.code in 300..399 && !probe.location.isNullOrBlank()) {
@@ -319,9 +311,7 @@ object LeovonixExtractors {
         ) {
             this.quality = quality
             this.referer = referer
-            if (headers.isNotEmpty()) {
-                this.headers = headers
-            }
+            this.headers = mapOf("User-Agent" to UA) + headers
         }
         callback(link)
     }

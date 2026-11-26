@@ -141,7 +141,7 @@ class MultiMovies : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("data-url"), base) }
             .distinct()
             .ifEmpty { LeovonixExtractors.collectCandidateLinks(doc, base) }
-        return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(serverUrls).toString()) {
+        return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(serverUrls, normalized)) {
             posterUrl = poster
             year = yearVal
             plot = plotText
