@@ -9,7 +9,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "4K, HDR, Dolby Vision & Dual Audio Movies/Series",
-    "fileSize": 72045,
+    "fileSize": 78341,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -19,7 +19,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/FourKHDHub.png",
     "apiVersion": 1,
-    "fileHash": "sha256-4670cd89587c10ac0660185ce2be441959a44318fba1264735a7784bdcce8306"
+    "fileHash": "sha256-b9b18e27b4fe42c75104ebcea9634f8c840ec2e3d1b3e9684659c6c5a0001bb9"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDhub4u.leo",
@@ -31,7 +31,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Bollywood, Hollywood & South Hindi Dubbed HD Server",
-    "fileSize": 75033,
+    "fileSize": 81937,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -41,7 +41,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/HDhub4u.png",
     "apiVersion": 1,
-    "fileHash": "sha256-dc34d0d875d1840ab4a24a37ea003b2674ba363c05d6e7b66b2c9598e41e3d94"
+    "fileHash": "sha256-a671aeecb47bf9956b0a454af5862c1ddf31fd64deec027cbfbfbb9d3b0f9169"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/UHDMovies.leo",
@@ -53,7 +53,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Direct 4K UHD & 1080p High-Bitrate Server",
-    "fileSize": 71928,
+    "fileSize": 78286,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
@@ -62,7 +62,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/UHDMovies.png",
     "apiVersion": 1,
-    "fileHash": "sha256-16c0e43e37cbe3d940b4cf016e9b8e770d92b62371a3e1c7ec35a5ca965e4132"
+    "fileHash": "sha256-9e9f68fe6b05487d1ca1f4db34dd11948aed98edaf0a5beb86ea7b937cfb04d6"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDMovie2.leo",
@@ -74,7 +74,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Bollywood, Hindi Dubbed & Direct Stream Server",
-    "fileSize": 73336,
+    "fileSize": 79586,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -83,7 +83,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/HDMovie2.png",
     "apiVersion": 1,
-    "fileHash": "sha256-fed87d005c54e8b35b1aaea06aece67a36617fe519b6e9def3a0f1662ebda9ce"
+    "fileHash": "sha256-20e4892f31a61754577bdeee353e9e2de52779446f2a9cc1a28c89343d8f6626"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HindMoviez.leo",
@@ -95,7 +95,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Fast Direct Hindi, South & Web Series Server",
-    "fileSize": 71865,
+    "fileSize": 78201,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -105,7 +105,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/HindMoviez.png",
     "apiVersion": 1,
-    "fileHash": "sha256-755e7878b22e728a669f2fe3de5f3407d98a93e5864c9db0cd801af3d69c405a"
+    "fileHash": "sha256-d642002c209f0f8afa9601f5eff530b0e3d17684b464ebe4087ba2fa82321c10"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MoviesDrive.leo",
@@ -117,7 +117,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "4K, 1080p & Dual Audio Fast HubCloud Server",
-    "fileSize": 73119,
+    "fileSize": 83457,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -127,7 +127,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MoviesDrive.png",
     "apiVersion": 1,
-    "fileHash": "sha256-02b34d28c209511ea408eb1fcd9bc487a5ff4cb011450351f84df10f78c6e030"
+    "fileHash": "sha256-1ca41916826d0a8a7529fe098eb3489f56054bfad4c2299ef7e358de4d9218f9"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/BollyFlix.leo",
@@ -139,7 +139,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Bollywood, South Hindi & Multi-Audio HD Server",
-    "fileSize": 71846,
+    "fileSize": 81020,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -149,7 +149,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/BollyFlix.png",
     "apiVersion": 1,
-    "fileHash": "sha256-16fdebe5e7d93a5e19bda59b651c582b89769be5d926086dc579472fb5ea0462"
+    "fileHash": "sha256-1c54ae23fe4aa0783c77ca6a2182d461707fc5cc4abe76f18b9c976043f528b3"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MoviesMod.leo",
@@ -161,7 +161,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Hollywood, Dual Audio & OTT Web Series Server",
-    "fileSize": 71877,
+    "fileSize": 81124,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -171,7 +171,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MoviesMod.png",
     "apiVersion": 1,
-    "fileHash": "sha256-75424ce374c75b3bef4983a944dc9c0e4f685bb3fd881947dbdf066ab5122d32"
+    "fileHash": "sha256-0b30bedbe4dacfe8a7d3ccc838088a3cde879981ee8e3689b5e21b839378a0a5"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/VegaMovies.leo",
@@ -183,7 +183,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Netflix, Prime, 4K & Hindi Dubbed Fast Server",
-    "fileSize": 73206,
+    "fileSize": 83572,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -193,7 +193,7 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/VegaMovies.png",
     "apiVersion": 1,
-    "fileHash": "sha256-7b2f9128798137ebfd030e2a6955d18b19fd0fb2d6cd2f7354c85ec76424fa6c"
+    "fileHash": "sha256-84dda1b3c521971f67a3371c8d7262cb9a6e7076aaaee761b14041861de927ce"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MultiMovies.leo",
@@ -205,7 +205,7 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Multi-Language Streaming, Anime & OTT Server",
-    "fileSize": 72659,
+    "fileSize": 78956,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -216,6 +216,6 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MultiMovies.png",
     "apiVersion": 1,
-    "fileHash": "sha256-1489b25c8ec0426d657ab4df313466bd1fe6e145d16cdd82bf0d582de98f110b"
+    "fileHash": "sha256-76ff9ee71de0205d2e2ea8f008df7233e633731612987de4176a1fdbecbacc95"
   }
 ]
