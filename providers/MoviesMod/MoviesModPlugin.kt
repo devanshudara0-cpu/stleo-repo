@@ -88,7 +88,7 @@ class MoviesMod : MainAPI() {
             page <= 1 -> "$base/$path"
             else -> "$base/${path.trimEnd('/')}/page/$page/"
         }
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
         val items = doc.select("article.latestPost").mapNotNull { it.toCard(base) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
@@ -97,7 +97,7 @@ class MoviesMod : MainAPI() {
         val base = activeBase()
         val q = URLEncoder.encode(query.trim(), "UTF-8").replace("+", "%20")
         val url = if (page <= 1) "$base/search/$q" else "$base/search/$q/page/$page/"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
         val items = doc.select("article.latestPost").mapNotNull { it.toCard(base) }
         return newSearchResponseList(items, items.isNotEmpty())
     }
@@ -107,7 +107,7 @@ class MoviesMod : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
         val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1.title, h1.entry-title, h1")?.text().orEmpty()
         ).ifBlank { "MoviesMod Title" }
@@ -137,7 +137,7 @@ class MoviesMod : MainAPI() {
                 .take(4)
             for (epPage in modproUrls) {
                 runCatching {
-                    val epDoc = app.get(epPage, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    val epDoc = app.get(epPage, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
                     val epBody = epDoc.selectFirst(".entry-content, .thecontent, main") ?: epDoc.body()
                     for (a in epBody.select("a[href]")) {
                         val txt = a.text().trim()

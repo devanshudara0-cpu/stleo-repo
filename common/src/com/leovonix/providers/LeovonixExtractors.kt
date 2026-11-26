@@ -101,18 +101,11 @@ object LeovonixExtractors {
         val l = url.lowercase()
         if (!l.startsWith("http") || isArchiveUrl(url)) return false
         if (l.contains("t.me") || l.contains("telegram") || l.contains("whatsapp") ||
-            l.contains("facebook") || l.contains("twitter") || l.contains("instagram")
+            l.contains("facebook") || l.contains("twitter") || l.contains("instagram") ||
+            l.contains("discord") || l.contains("reddit") || l.contains("mailto:") ||
+            l.contains("javascript:")
         ) return false
-        val known = listOf(
-            "hubcloud", "vcloud", "hubdrive", "hblinks", "hubcdn", "gdflix", "gdshine",
-            "driveseed", "driveleech", "fastdl", "hcloud", "gofile", "pixeldrain",
-            "workers.dev", "r2.cloudflarestorage", "googleusercontent", "only-apis",
-            "mdrive", "nexdrive", "vegadrive", "hdstream4u", "vidstack", "linksmod",
-            "fxlinks", "fastdlserver", "gadgetsweb", "greenmotors", "thenaukriadda",
-            "unblocked", "modiplay", "iqsmartgames", "byse", "hshare", "boldb", "hdm.im",
-            "?sid=", "?id=", ".m3u8", ".mp4", ".mkv"
-        )
-        return known.any { l.contains(it) }
+        return true
     }
 
     fun collectCandidateLinks(scope: Element, base: String): List<String> =
