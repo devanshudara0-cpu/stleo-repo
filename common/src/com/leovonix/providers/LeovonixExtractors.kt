@@ -13,8 +13,8 @@ import com.stleo.ott.utils.getQualityFromName
 import com.stleo.ott.utils.loadExtractor
 import com.stleo.ott.utils.newExtractorLink
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -29,12 +29,17 @@ object LeovonixExtractors {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
 
     suspend fun <T> List<T>.safeForEach(block: suspend (T) -> Unit) = supervisorScope {
-        map { item ->
-            async {
-                runCatching { block(item) }
-                    .onFailure { Log.e("LeovonixExtractors", "Task failed: ${it.message}") }
+        val channel = Channel<T>(8)
+        repeat(3) {
+            launch {
+                for (item in channel) {
+                    runCatching { block(item) }
+                        .onFailure { Log.e("LeovonixExtractors", "Task failed: ${it.message}") }
+                }
             }
-        }.awaitAll()
+        }
+        this@safeForEach.forEach { channel.send(it) }
+        channel.close()
     }
 
     fun parsePayloadUrls(data: String): List<String> {
@@ -214,6 +219,23 @@ object LeovonixExtractors {
                 prefix = "",
             )
         }
+    }
+
+    private suspend fun fetchLimited(url: String, referer: String?): Pair<String, String> = withContext(Dispatchers.IO) {
+        val reqBuilder = Request.Builder().url(url).header("User-Agent", UA)
+        if (!referer.isNullOrBlank()) reqBuilder.header("Referer", referer)
+        runCatching {
+            app.baseClient.newCall(reqBuilder.build()).execute().use { resp ->
+                val landed = resp.request.url.toString()
+                val src = resp.body?.source() ?: return@use "" to landed
+                val max = 1_500_000
+                src.request(max.toLong())
+                val size = minOf(src.buffer.size, max.toLong()).toInt()
+                val bytes = ByteArray(size)
+                if (size > 0) src.readFully(bytes)
+                String(bytes, Charsets.UTF_8) to landed
+            }
+        }.getOrDefault("" to url)
     }
 
     suspend fun emitDirectLink(
@@ -464,7 +486,7 @@ object LeovonixExtractors {
         callback: (ExtractorLink) -> Unit,
         depth: Int = 0,
     ) {
-        if (depth > 4 || rawUrl.isBlank()) return
+        if (depth > 3 || rawUrl.isBlank()) return
         val cleanInput = DomainManager.fixUrl(rawUrl.replace("&amp;", "&").replace("\\/", "/"), referer ?: rawUrl) ?: return
         if (isArchiveUrl(cleanInput)) return
 
@@ -946,10 +968,10 @@ object LeovonixExtractors {
         callback: (ExtractorLink) -> Unit,
         depth: Int,
     ) {
-        val res = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA))
-        val landedUrl = res.url.ifBlank { url }
+        val fetched = fetchLimited(url, referer)
+        val html = fetched.first
+        val landedUrl = fetched.second.ifBlank { url }
         val landedBase = DomainManager.originOf(landedUrl).ifBlank { DomainManager.originOf(url) }
-        val html = res.text
         val unpacked = Regex("""eval\(function\(p,a,c,k,e,[rd].*?</script>""", RegexOption.DOT_MATCHES_ALL)
             .findAll(html)
             .mapNotNull { JsUnpacker(it.value).unpack() }
@@ -993,9 +1015,10 @@ object LeovonixExtractors {
         if (!iframeSrc.isNullOrBlank() && iframeSrc != landedUrl && !iframeSrc.contains("about:blank") && depth < 3) {
             resolveLinks(iframeSrc, sourceName, landedUrl, quality, subtitleCallback, callback, depth + 1)
         }
-        if (depth < 3) {
+        if (depth < 2) {
             val candidates = collectCandidateLinks(doc, landedBase)
                 .filter { it != landedUrl && !isArchiveUrl(it) }
+                .take(12)
             candidates.safeForEach { link ->
                 resolveLinks(link, sourceName, landedUrl, quality, subtitleCallback, callback, depth + 1)
             }
