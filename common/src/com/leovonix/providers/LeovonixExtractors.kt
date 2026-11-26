@@ -21,6 +21,7 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import java.net.URLDecoder
 
 object LeovonixExtractors {
@@ -100,6 +101,17 @@ object LeovonixExtractors {
         )
         return known.any { l.contains(it) }
     }
+
+    fun collectCandidateLinks(scope: Element, base: String): List<String> =
+        scope.select("a[href], button[data-url], [data-source], [data-stream-url]")
+            .mapNotNull { el ->
+                val raw = el.attr("href").ifBlank { el.attr("data-url") }
+                    .ifBlank { el.attr("data-source") }
+                    .ifBlank { el.attr("data-stream-url") }
+                DomainManager.fixUrl(raw, base)
+            }
+            .filter { isCandidateLink(it) }
+            .distinct()
 
     private fun isArchiveMagic(prefix: String): Boolean {
         return prefix.startsWith("PK\u0003\u0004") ||
@@ -990,6 +1002,13 @@ object LeovonixExtractors {
         val iframeSrc = doc.selectFirst("iframe[src]")?.attr("src")
         if (!iframeSrc.isNullOrBlank() && iframeSrc != landedUrl && !iframeSrc.contains("about:blank") && depth < 3) {
             resolveLinks(iframeSrc, sourceName, landedUrl, quality, subtitleCallback, callback, depth + 1)
+        }
+        if (depth < 3) {
+            val candidates = collectCandidateLinks(doc, landedBase)
+                .filter { it != landedUrl && !isArchiveUrl(it) }
+            candidates.safeForEach { link ->
+                resolveLinks(link, sourceName, landedUrl, quality, subtitleCallback, callback, depth + 1)
+            }
         }
     }
 }

@@ -110,6 +110,7 @@ class FourKHDHub : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
             .filter { LeovonixExtractors.isCandidateLink(it) }
             .distinct()
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(container, base) }
     }
 
     override suspend fun load(url: String): LoadResponse? {

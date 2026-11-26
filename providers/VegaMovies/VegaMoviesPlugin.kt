@@ -131,14 +131,7 @@ class VegaMovies : MainAPI() {
         return newSearchResponseList(results, results.size >= 15)
     }
 
-    private fun isSupportedLink(u: String): Boolean {
-        val l = u.lowercase()
-        return l.startsWith("http") && (
-            l.contains("nexdrive") || l.contains("hubcloud") ||
-                l.contains("fastdl") || l.contains("vegadrive") ||
-                l.contains("gdflix") || l.contains("gofile")
-            )
-    }
+    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
@@ -222,6 +215,7 @@ class VegaMovies : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
             .filter { isSupportedLink(it) }
             .distinct()
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
         return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(links).toString()) {
             posterUrl = poster
             year = yearVal

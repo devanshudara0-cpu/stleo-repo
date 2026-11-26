@@ -165,6 +165,7 @@ class HDMovie2 : MainAPI() {
         }
 
         val targets = extractPlayerTargets(doc, base, normalized)
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(doc, base) }
         return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(targets).toString()) {
             posterUrl = poster
             year = yearVal

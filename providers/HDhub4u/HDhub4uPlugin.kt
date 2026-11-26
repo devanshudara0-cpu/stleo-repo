@@ -201,6 +201,7 @@ class HDhub4u : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
             .filter { isSupportedLink(it) }
             .distinct()
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
 
         return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(allLinks).toString()) {
             posterUrl = poster

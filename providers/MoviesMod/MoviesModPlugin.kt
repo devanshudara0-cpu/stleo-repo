@@ -102,14 +102,7 @@ class MoviesMod : MainAPI() {
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
-    private fun isSupportedLink(u: String): Boolean {
-        val l = u.lowercase()
-        return l.startsWith("http") && (
-            l.contains("modpro") || l.contains("thenaukriadda") ||
-                l.contains("driveseed") || l.contains("hubcloud") ||
-                l.contains("gdflix") || l.contains("?sid=")
-            )
-    }
+    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
@@ -182,6 +175,7 @@ class MoviesMod : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
             .filter { isSupportedLink(it) }
             .distinct()
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
         return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(links).toString()) {
             posterUrl = poster
             year = yearVal

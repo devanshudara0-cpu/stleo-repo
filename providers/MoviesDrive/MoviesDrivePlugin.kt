@@ -131,13 +131,7 @@ class MoviesDrive : MainAPI() {
         return newSearchResponseList(results, results.size >= 15)
     }
 
-    private fun isSupportedLink(u: String): Boolean {
-        val l = u.lowercase()
-        return l.startsWith("http") && (
-            l.contains("mdrive") || l.contains("hubcloud") || l.contains("gdflix") ||
-                l.contains("only-apis") || l.contains("fastdl") || l.contains("hubdrive")
-            )
-    }
+    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
@@ -214,6 +208,7 @@ class MoviesDrive : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
             .filter { isSupportedLink(it) }
             .distinct()
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
         return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(links).toString()) {
             posterUrl = poster
             year = yearVal

@@ -103,14 +103,7 @@ class HindMoviez : MainAPI() {
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
-    private fun isSupportedLink(u: String): Boolean {
-        val l = u.lowercase()
-        return l.startsWith("http") && (
-            l.contains("joshapp") || l.contains("mvlink") || l.contains("hshare") ||
-                l.contains("gdshine") || l.contains("boldb") ||
-                l.contains("hubcloud") || l.contains("gdflix") || l.contains("workers.dev")
-            )
-    }
+    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
@@ -156,6 +149,7 @@ class HindMoviez : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
             .filter { isSupportedLink(it) }
             .distinct()
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
         return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(links).toString()) {
             posterUrl = poster
             year = yearVal

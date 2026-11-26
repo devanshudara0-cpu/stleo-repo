@@ -103,18 +103,7 @@ class UHDMovies : MainAPI() {
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
-    private fun isSupportedLink(u: String): Boolean {
-        val l = u.lowercase()
-        if (l.contains("?sid=")) {
-            val sidVal = u.substringAfter("?sid=").substringBefore("&")
-            return sidVal.length >= 100
-        }
-        return l.startsWith("http") && (
-            l.contains("thenaukriadda") || l.contains("unblocked") || l.contains("tech.") ||
-                l.contains("driveseed") || l.contains("driveleech") ||
-                l.contains("hubcloud") || l.contains("gdflix") || l.contains("?id=")
-            )
-    }
+    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
@@ -160,6 +149,7 @@ class UHDMovies : MainAPI() {
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
             .filter { isSupportedLink(it) }
             .distinct()
+            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
 
         return newMovieLoadResponse(title, normalized, TvType.Movie, JSONArray(movieLinks).toString()) {
             posterUrl = poster
