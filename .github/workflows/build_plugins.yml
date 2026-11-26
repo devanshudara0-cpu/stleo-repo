@@ -1,6 +1,12 @@
-name: Build LEOVONIX Extensions
+name: Build LEOVONIX Plugins
 
 on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'providers/**'
+      - 'common/**'
+      - '.github/workflows/build_plugins.yml'
   workflow_dispatch:
 
 permissions:
@@ -27,95 +33,168 @@ jobs:
           curl -fsSL -o .build-tools/kotlinc.zip https://github.com/JetBrains/kotlin/releases/download/v2.4.21/kotlin-compiler-2.4.21.zip
           unzip -q .build-tools/kotlinc.zip -d .build-tools
           curl -fsSL -o .build-tools/leovonix-plugin-sdk.jar https://github.com/devanshudara0-cpu/STxLEO_OTT/releases/download/v1.0/leovonix-plugin-sdk.jar
-          ls -lh .build-tools/leovonix-plugin-sdk.jar
+          echo "SDK size: $(stat -c%s .build-tools/leovonix-plugin-sdk.jar) bytes"
 
-      - name: Compile and Package All 10 Extensions
+      - name: Compile & Package all plugins
         run: |
           KOTLINC="$PWD/.build-tools/kotlinc/bin/kotlinc"
           SDK_JAR="$PWD/.build-tools/leovonix-plugin-sdk.jar"
           ANDROID_JAR=$(ls -d "$ANDROID_HOME"/platforms/android-*/android.jar | sort -V | tail -n 1)
           D8_BIN=$(ls -d "$ANDROID_HOME"/build-tools/*/d8 | sort -V | tail -n 1)
-          echo "Using ANDROID_JAR=$ANDROID_JAR"
-          echo "Using D8_BIN=$D8_BIN"
+          COMMON_SRC="$PWD/common/src"
+
+          echo "ANDROID_JAR=$ANDROID_JAR"
+          echo "D8_BIN=$D8_BIN"
 
           mkdir -p builds
 
-          build_plugin() {
-            local NAME="$1"
-            local CLASS="$2"
-            local VERSION="$3"
-            local SRC_FILE="$4"
+          # Provider config: "FolderName|PluginClassName|InternalName|BuildFileName"
+          declare -a PROVIDERS=(
+            "BollyFlix|com.leovonix.providers.bollyflix.BollyFlixPlugin|BollyFlix|BollyFlix"
+            "FourKHDHub|com.leovonix.providers.fourkhdhub.FourKHDHubPlugin|FourKHDHub|FourKHDHub"
+            "HDhub4u|com.leovonix.providers.hdhub4u.HDhub4uPlugin|HDhub4u|HDhub4u"
+            "HDMovie2|com.leovonix.providers.hdmovie2.HDMovie2Plugin|HDMovie2|HDMovie2"
+            "HindMoviez|com.leovonix.providers.hindmoviez.HindMoviezPlugin|HindMoviez|HindMoviez"
+            "MoviesDrive|com.leovonix.providers.moviesdrive.MoviesDrivePlugin|MoviesDrive|MoviesDrive"
+            "MoviesMod|com.leovonix.providers.moviesmod.MoviesModPlugin|MoviesMod|MoviesMod"
+            "MultiMovies|com.leovonix.providers.multimovies.MultiMoviesPlugin|MultiMovies|MultiMovies"
+            "UHDMovies|com.leovonix.providers.uhdmovies.UHDMoviesPlugin|UHDMovies|UHDMovies"
+            "VegaMovies|com.leovonix.providers.vegamovies.VegaMoviesPlugin|VegaMovies|VegaMovies"
+          )
 
-            echo "=== Building $NAME ($CLASS v$VERSION) ==="
-            local OUT_CLS=".build-out/$NAME/classes"
-            local OUT_DEX=".build-out/$NAME/dex"
-            rm -rf ".build-out/$NAME"
-            mkdir -p "$OUT_CLS" "$OUT_DEX"
+          for entry in "${PROVIDERS[@]}"; do
+            IFS='|' read -r FOLDER CLASS INTERNAL BUILD_NAME <<< "$entry"
+            echo ""
+            echo "====== Building $FOLDER → $BUILD_NAME.leo ======"
 
-            "$KOTLINC" -jvm-target 11 -cp "$SDK_JAR:$ANDROID_JAR" -d "$OUT_CLS" \
-              common/src/com/leovonix/providers/*.kt \
-              "$SRC_FILE"
+            SRC_DIR="$PWD/providers/$FOLDER"
+            BUILD_OUT="$PWD/.build-out/$FOLDER"
+            mkdir -p "$BUILD_OUT/classes" "$BUILD_OUT/dex"
 
-            mapfile -t CLASS_FILES < <(find "$OUT_CLS" -name '*.class')
-            "$D8_BIN" --min-api 23 --lib "$ANDROID_JAR" --classpath "$SDK_JAR" --output "$OUT_DEX" "${CLASS_FILES[@]}"
+            # Compile Kotlin source (provider + common)
+            mapfile -t KT_FILES < <(find "$SRC_DIR" "$COMMON_SRC" -name '*.kt')
+            echo "Compiling ${#KT_FILES[@]} .kt files..."
+            "$KOTLINC" -jvm-target 11 \
+              -cp "$SDK_JAR:$ANDROID_JAR" \
+              -d "$BUILD_OUT/classes" \
+              "${KT_FILES[@]}"
 
-            cat > "$OUT_DEX/manifest.json" <<EOF
-          {"name":"$NAME","pluginClassName":"$CLASS","version":$VERSION,"requiresResources":false}
+            # Convert to DEX
+            mapfile -t CLASS_FILES < <(find "$BUILD_OUT/classes" -name '*.class')
+            echo "Converting ${#CLASS_FILES[@]} .class files to DEX..."
+            "$D8_BIN" --min-api 23 \
+              --lib "$ANDROID_JAR" \
+              --classpath "$SDK_JAR" \
+              --output "$BUILD_OUT/dex" \
+              "${CLASS_FILES[@]}"
+
+            # Write manifest.json
+            cat > "$BUILD_OUT/dex/manifest.json" <<EOF
+          {"name":"$INTERNAL","pluginClassName":"$CLASS","version":103,"requiresResources":false}
           EOF
 
-            rm -f "builds/$NAME.leo"
-            (cd "$OUT_DEX" && zip -q -r "$OLDPWD/builds/$NAME.leo" manifest.json classes*.dex)
-          }
+            # Package into .leo
+            LEO_PATH="builds/$BUILD_NAME.leo"
+            rm -f "$LEO_PATH"
+            (cd "$BUILD_OUT/dex" && zip -q -r "$OLDPWD/$LEO_PATH" manifest.json classes*.dex)
+            echo "Built: $LEO_PATH ($(stat -c%s "$LEO_PATH") bytes)"
+          done
 
-          build_plugin "FourKHDHub"  "com.leovonix.providers.fourkhdhub.FourKHDHubPlugin"   57 "providers/FourKHDHub/FourKHDHubPlugin.kt"
-          build_plugin "HDhub4u"     "com.leovonix.providers.hdhub4u.HDhub4uPlugin"         67 "providers/HDhub4u/HDhub4uPlugin.kt"
-          build_plugin "UHDMovies"   "com.leovonix.providers.uhdmovies.UHDMoviesPlugin"     57 "providers/UHDMovies/UHDMoviesPlugin.kt"
-          build_plugin "HDMovie2"    "com.leovonix.providers.hdmovie2.HDMovie2Plugin"       27 "providers/HDMovie2/HDMovie2Plugin.kt"
-          build_plugin "HindMoviez"  "com.leovonix.providers.hindmoviez.HindMoviezPlugin"   32 "providers/HindMoviez/HindMoviezPlugin.kt"
-          build_plugin "MoviesDrive" "com.leovonix.providers.moviesdrive.MoviesDrivePlugin" 17 "providers/MoviesDrive/MoviesDrivePlugin.kt"
-          build_plugin "BollyFlix"   "com.leovonix.providers.bollyflix.BollyFlixPlugin"     17 "providers/BollyFlix/BollyFlixPlugin.kt"
-          build_plugin "MoviesMod"   "com.leovonix.providers.moviesmod.MoviesModPlugin"     17 "providers/MoviesMod/MoviesModPlugin.kt"
-          build_plugin "VegaMovies"  "com.leovonix.providers.vegamovies.VegaMoviesPlugin"   17 "providers/VegaMovies/VegaMoviesPlugin.kt"
-          build_plugin "MultiMovies" "com.leovonix.providers.multimovies.MultiMoviesPlugin" 67 "providers/MultiMovies/MultiMoviesPlugin.kt"
+      - name: Verify no forbidden tokens
+        run: |
+          python3 - <<'PY'
+          import zipfile, os, sys
 
+          FORBIDDEN = [b"lagradost", b"cloudstream", b"recloudstream"]
+          errors = []
+          for leo in os.listdir("builds"):
+              if not leo.endswith(".leo"):
+                  continue
+              with zipfile.ZipFile(f"builds/{leo}") as z:
+                  for name in z.namelist():
+                      data = z.read(name).lower()
+                      for bad in FORBIDDEN:
+                          if bad in data:
+                              errors.append(f"FORBIDDEN {bad!r} in {leo}/{name}")
+          if errors:
+              for e in errors:
+                  print("ERROR:", e)
+              sys.exit(1)
+          print("All plugins clean — no forbidden tokens found.")
+          PY
+
+      - name: Update plugins.json
+        run: |
           python3 - <<'PY'
           import hashlib, json, os, zipfile
 
-          with open("plugins.json", "r", encoding="utf-8") as f:
-              plugins = json.load(f)
+          BUILDS_DIR = "builds"
+          PLUGINS_JSON = "plugins.json"
+          BASE_URL = "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds"
+          ICONS_URL = "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons"
+          REPO_URL = "https://github.com/devanshudara0-cpu/stleo-repo"
+          VERSION = 103
 
-          for p in plugins:
-              name = p["internalName"]
-              leo = f"builds/{name}.leo"
-              assert os.path.exists(leo), f"Missing {leo}"
-              with zipfile.ZipFile(leo) as z:
-                  for entry in z.namelist():
-                      data = z.read(entry).lower()
-                      for bad in (b"cloudstream", b"recloudstream", b"com/lagradost/api", b"phisher", b"omg10"):
-                          if bad in data:
-                              raise SystemExit(f"Forbidden token {bad!r} found in {leo}:{entry}")
-              size = os.path.getsize(leo)
-              sha = hashlib.sha256(open(leo, "rb").read()).hexdigest()
-              p["fileSize"] = size
-              p["fileHash"] = f"sha256-{sha}"
-              p["status"] = 1
-              p["apiVersion"] = 1
-              print(f"Verified {name}.leo: size={size}, sha256={sha[:16]}...")
+          # Provider metadata: internalName -> (displayName, buildFile, description, language, tvTypes, iconExt)
+          PROVIDERS = {
+              "BollyFlix": ("LEOVONIX BollyFlix Server", "BollyFlix", "Bollywood Hindi Movies & Series", "hi", ["Movie","TvSeries"], "png"),
+              "FourKHDHub": ("LEOVONIX Hindi 4K Server", "FourKHDHub", "Hindi Dubbed & Bollywood 4K Server", "hi", ["Movie","TvSeries"], "png"),
+              "HDhub4u": ("LEOVONIX HDhub4u Server", "HDhub4u", "Hindi Dubbed & Bollywood 4K Server", "hi", ["Movie","TvSeries","Anime"], "png"),
+              "HDMovie2": ("LEOVONIX HDMovie2 Server", "HDMovie2", "HD Hindi & Dubbed Movies", "hi", ["Movie","TvSeries"], "png"),
+              "HindMoviez": ("LEOVONIX HindMoviez Server", "HindMoviez", "Watch Movies & TvSeries (Multi-Lang)", "hi", ["Movie","TvSeries"], "png"),
+              "MoviesDrive": ("LEOVONIX MoviesDrive Server", "MoviesDrive", "Direct Drive Links HD Server", "hi", ["Movie","TvSeries"], "png"),
+              "MoviesMod": ("LEOVONIX MoviesMod Server", "MoviesMod", "Modded Multi-Lang Movie Server", "hi", ["Movie","TvSeries"], "png"),
+              "MultiMovies": ("LEOVONIX MultiMovies Server", "MultiMovies", "Indian Multi-language HD Provider", "hi", ["Movie","TvSeries","Anime"], "png"),
+              "UHDMovies": ("LEOVONIX UHD Movies", "UHDMovies", "Direct 4K UHD Movies Server", "en", ["Movie","TvSeries"], "png"),
+              "VegaMovies": ("LEOVONIX VegaMovies Server", "VegaMovies", "Indian 4K & UHD Movie Server", "hi", ["Movie","TvSeries"], "png"),
+          }
 
-          with open("plugins.json", "w", encoding="utf-8") as f:
-              json.dump(plugins, f, indent=2)
+          plugins = []
+          for internal, (display, build_file, desc, lang, tv_types, icon_ext) in PROVIDERS.items():
+              leo_path = os.path.join(BUILDS_DIR, f"{build_file}.leo")
+              if not os.path.exists(leo_path):
+                  print(f"WARNING: {leo_path} not found, skipping")
+                  continue
+              size = os.path.getsize(leo_path)
+              sha = hashlib.sha256(open(leo_path, "rb").read()).hexdigest()
+
+              # Verify manifest in .leo
+              with zipfile.ZipFile(leo_path) as z:
+                  manifest = json.loads(z.read("manifest.json").decode())
+              print(f"  {internal}: size={size}, sha256={sha[:16]}..., class={manifest['pluginClassName']}")
+
+              plugins.append({
+                  "url": f"{BASE_URL}/{build_file}.leo",
+                  "status": 1,
+                  "version": VERSION,
+                  "name": display,
+                  "internalName": internal,
+                  "authors": ["Devanshu (@Dara_OG)"],
+                  "description": desc,
+                  "fileSize": size,
+                  "repositoryUrl": REPO_URL,
+                  "language": lang,
+                  "tvTypes": tv_types,
+                  "iconUrl": f"{ICONS_URL}/{build_file}.{icon_ext}",
+                  "apiVersion": 1,
+                  "fileHash": f"sha256-{sha}",
+              })
+
+          with open(PLUGINS_JSON, "w", encoding="utf-8") as f:
+              json.dump(plugins, f, indent=2, ensure_ascii=False)
               f.write("\n")
+          print(f"\nUpdated {PLUGINS_JSON} with {len(plugins)} plugins.")
           PY
 
-      - name: Commit & Push Built Extensions
+      - name: Commit & Push
         run: |
           rm -rf .build-tools .build-out
           git config user.name "leovonix-bot"
           git config user.email "bot@leovonix.local"
-          git add builds/*.leo plugins.json
+          git add builds/ plugins.json
           if ! git diff --cached --quiet; then
-            git commit -m "chore(build): compile all 10 clean LEOVONIX extensions [skip ci]"
+            git commit -m "chore(build): compile clean v103 plugins from Kotlin source [skip ci]"
             git push origin HEAD:main
           else
-            echo "No changes to push"
+            echo "No changes to commit."
           fi

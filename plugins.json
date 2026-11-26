@@ -1,24 +1,24 @@
 [
   {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Fivemovierulz.leo",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/BollyFlix.leo",
     "status": 1,
     "version": 102,
-    "name": "LEOVONIX Multi-Audio Server",
-    "internalName": "Fivemovierulz",
+    "name": "LEOVONIX BollyFlix Server",
+    "internalName": "BollyFlix",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
-    "description": "South Indian & Dual Audio Server",
-    "fileSize": 99163,
+    "description": "Bollywood Hindi Movies & Series",
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
-    "language": "ta",
+    "language": "hi",
     "tvTypes": [
-      "TvSeries",
-      "Movie"
+      "Movie",
+      "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Fivemovierulz.jpg",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/BollyFlix.png",
     "apiVersion": 1,
-    "fileHash": "sha256-764e98b411628a963c7ecd8135f36d24c1f8a4532411e6ab23deac9d1d59360b"
+    "fileHash": "sha256-pending"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/FourKHDHub.leo",
@@ -30,27 +30,28 @@
       "Devanshu (@Dara_OG)"
     ],
     "description": "Hindi Dubbed & Bollywood 4K Server",
-    "fileSize": 138101,
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
-    "language": "en",
+    "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/FourKHDHub.png",
     "apiVersion": 1,
-    "fileHash": "sha256-092f341f1f1f40cb4f1285c7ffbd33736809e8ee688e0f1c6224633d7d06d0cd"
+    "fileHash": "sha256-pending"
   },
   {
     "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDhub4u.leo",
     "status": 1,
     "version": 102,
-    "name": "LEOVONIX Hindi 4K Server",
+    "name": "LEOVONIX HDhub4u Server",
     "internalName": "HDhub4u",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
-    "fileSize": 155097,
+    "description": "Hindi Dubbed & Bollywood 4K Server",
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -60,104 +61,103 @@
     ],
     "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/HDhub4u.png",
     "apiVersion": 1,
-    "fileHash": "sha256-bf4529c347e0a70cd27cd021fa469747a67fe15eaaeaae523119d9d2a1a2a769",
-    "description": "Hindi Dubbed & Bollywood 4K Server"
+    "fileHash": "sha256-pending"
   },
   {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Hdmovie2.leo",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HDMovie2.leo",
     "status": 1,
     "version": 102,
-    "name": "Hdmovie2",
-    "internalName": "Hdmovie2",
+    "name": "LEOVONIX HDMovie2 Server",
+    "internalName": "HDMovie2",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
-    "description": "Hdmovie2",
-    "fileSize": 120998,
+    "description": "HD Hindi & Dubbed Movies",
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
-      "TvSeries",
-      "Movie"
+      "Movie",
+      "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Hdmovie2.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/HDMovie2.png",
     "apiVersion": 1,
-    "fileHash": "sha256-82bd70496a2ecf61fae44ef707410158f81d6697e3db7c78016bc4b14827b675"
+    "fileHash": "sha256-pending"
   },
   {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Hindmoviez.leo",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/HindMoviez.leo",
     "status": 1,
     "version": 102,
-    "name": "Hindmoviez",
-    "internalName": "Hindmoviez",
+    "name": "LEOVONIX HindMoviez Server",
+    "internalName": "HindMoviez",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
     "description": "Watch Movies & TvSeries (Multi-Lang)",
-    "fileSize": 125910,
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Hindmoviez.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/HindMoviez.png",
     "apiVersion": 1,
-    "fileHash": "sha256-51cf1186042bc2b718727e0c2f9d11d5ac1cf34cfd28222e85acaa5ee2b56ffb"
+    "fileHash": "sha256-pending"
   },
   {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MovieBoxProvider.leo",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MoviesDrive.leo",
     "status": 1,
     "version": 102,
-    "name": "LEOVONIX MovieBox Server",
-    "internalName": "MovieBoxProvider",
+    "name": "LEOVONIX MoviesDrive Server",
+    "internalName": "MoviesDrive",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
-    "description": "Official MovieBox Server for LEOVONIX OTT",
-    "fileSize": 262382,
+    "description": "Direct Drive Links HD Server",
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MovieBoxProvider.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MoviesDrive.png",
     "apiVersion": 1,
-    "fileHash": "sha256-4ea6f6f25cc871850e4ba343ff26305e13a28012e5874b3179218c84840efa2b"
+    "fileHash": "sha256-pending"
   },
   {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/Movies4u.leo",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MoviesMod.leo",
     "status": 1,
     "version": 102,
-    "name": "Movies4u",
-    "internalName": "Movies4u",
+    "name": "LEOVONIX MoviesMod Server",
+    "internalName": "MoviesMod",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
-    "description": "Movies4u",
-    "fileSize": 161722,
+    "description": "Modded Multi-Lang Movie Server",
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/Movies4u.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MoviesMod.png",
     "apiVersion": 1,
-    "fileHash": "sha256-d297ba6ea9d33636519091ce9436f30f7316fe916e26d805fcceee344629d940"
+    "fileHash": "sha256-pending"
   },
   {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MultiMoviesProvider.leo",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/MultiMovies.leo",
     "status": 1,
     "version": 102,
-    "name": "MultiMoviesProvider",
-    "internalName": "MultiMoviesProvider",
+    "name": "LEOVONIX MultiMovies Server",
+    "internalName": "MultiMovies",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
     "description": "Indian Multi-language HD Provider",
-    "fileSize": 183189,
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "hi",
     "tvTypes": [
@@ -165,54 +165,50 @@
       "TvSeries",
       "Anime"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MultiMoviesProvider.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/MultiMovies.png",
     "apiVersion": 1,
-    "fileHash": "sha256-4431df43980c51e2d4c2eee80b3297dc9325a6cc1a0ac26082b3bd413665e16d"
+    "fileHash": "sha256-pending"
   },
   {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/SuperStream.leo",
-    "status": 1,
-    "version": 102,
-    "name": "LEOVONIX Ultra 4K Server",
-    "internalName": "SuperStream",
-    "authors": [
-      "Devanshu (@Dara_OG)"
-    ],
-    "description": "Netflix, Prime & Hollywood 4K Ultra HD Server",
-    "fileSize": 250646,
-    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
-    "language": "en",
-    "tvTypes": [
-      "AsianDrama",
-      "TvSeries",
-      "Anime",
-      "Movie",
-      "Cartoon",
-      "AnimeMovie"
-    ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/SuperStream.png",
-    "apiVersion": 1,
-    "fileHash": "sha256-dfa317b04559683a19727ff477b7b5986fff3c9dffaa79d6a77b535e0364ee97"
-  },
-  {
-    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/UHDmoviesProvider.leo",
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/UHDMovies.leo",
     "status": 1,
     "version": 102,
     "name": "LEOVONIX UHD Movies",
-    "internalName": "UHDmoviesProvider",
+    "internalName": "UHDMovies",
     "authors": [
       "Devanshu (@Dara_OG)"
     ],
     "description": "Direct 4K UHD Movies Server",
-    "fileSize": 126281,
+    "fileSize": 0,
     "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
     "language": "en",
     "tvTypes": [
       "Movie",
       "TvSeries"
     ],
-    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/UHDmoviesProvider.png",
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/UHDMovies.png",
     "apiVersion": 1,
-    "fileHash": "sha256-86d2b319966b6d7788a0f486ad33446e129680b2ba1ed6b1c7a071e896a3bd7a"
+    "fileHash": "sha256-pending"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds/VegaMovies.leo",
+    "status": 1,
+    "version": 102,
+    "name": "LEOVONIX VegaMovies Server",
+    "internalName": "VegaMovies",
+    "authors": [
+      "Devanshu (@Dara_OG)"
+    ],
+    "description": "Indian 4K & UHD Movie Server",
+    "fileSize": 0,
+    "repositoryUrl": "https://github.com/devanshudara0-cpu/stleo-repo",
+    "language": "hi",
+    "tvTypes": [
+      "Movie",
+      "TvSeries"
+    ],
+    "iconUrl": "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons/VegaMovies.png",
+    "apiVersion": 1,
+    "fileHash": "sha256-pending"
   }
 ]
