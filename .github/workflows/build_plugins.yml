@@ -46,6 +46,8 @@ jobs:
           echo "ANDROID_JAR=$ANDROID_JAR"
           echo "D8_BIN=$D8_BIN"
 
+          # Clear old builds first
+          rm -rf builds
           mkdir -p builds
 
           # Provider config: "FolderName|PluginClassName|InternalName|BuildFileName"
