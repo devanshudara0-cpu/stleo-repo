@@ -42,6 +42,11 @@ object LeovonixExtractors {
         channel.close()
     }
 
+    private fun logStep(step: String, url: String, code: Int? = null, detail: String? = null) {
+        val status = if (code != null) "HTTP $code " else ""
+        Log.e("LeovonixExtractors", "[$step] $status${detail ?: ""} :: $url")
+    }
+
     fun parsePayloadUrls(data: String): List<String> {
         val trimmed = data.trim()
         val jsonCandidate = when {
@@ -259,7 +264,7 @@ object LeovonixExtractors {
 
             for (step in 0 until 3) {
                 val probe = runCatching { probeRange(cleanUrl, probeHeaders) }.getOrElse {
-                    Log.w("LeovonixExtractors", "Skipping unreachable stream (${it.message}): $cleanUrl")
+                    logStep("probe-range", cleanUrl, detail = it.message)
                     return
                 }
 
@@ -280,7 +285,7 @@ object LeovonixExtractors {
                     break
                 }
                 if (probe.code >= 400) {
-                    Log.w("LeovonixExtractors", "Skipping dead stream (${probe.code}): $cleanUrl")
+                    logStep("probe", cleanUrl, code = probe.code)
                     return
                 }
                 if (probe.disposition.contains(".zip") || probe.disposition.contains(".rar") || probe.disposition.contains(".7z")) {
@@ -293,7 +298,7 @@ object LeovonixExtractors {
                     probe.contentType.contains("application/x-7z-compressed") ||
                     isArchiveMagic(probe.prefix)
                 ) {
-                    Log.w("LeovonixExtractors", "Skipping archive stream: $cleanUrl")
+                    logStep("archive", cleanUrl)
                     return
                 }
                 val looksHtml = probe.contentType.contains("text/html") ||
@@ -313,11 +318,11 @@ object LeovonixExtractors {
                         cleanUrl = resolvedNested
                         continue
                     }
-                    Log.w("LeovonixExtractors", "Skipping HTML response (${probe.contentType}): $cleanUrl")
+                    logStep("html", cleanUrl, code = probe.code, detail = probe.contentType)
                     return
                 }
                 if (probe.contentType.contains("application/json") || probe.prefix.trimStart().startsWith("{\"error")) {
-                    Log.w("LeovonixExtractors", "Skipping JSON error response: $cleanUrl")
+                    logStep("json-error", cleanUrl, code = probe.code)
                     return
                 }
                 break
@@ -368,7 +373,7 @@ object LeovonixExtractors {
                 } else {
                     app.post(currentUrl, headers = hdrs, referer = currentRef, data = requestData)
                 }
-            }.getOrNull() ?: break
+            }.onFailure { logStep("redirect-hop-$hop", currentUrl, detail = it.message) }.getOrNull() ?: break
 
             res.headers.values("set-cookie").forEach { raw ->
                 val pair = raw.substringBefore(";").trim()
@@ -474,6 +479,7 @@ object LeovonixExtractors {
             }
             break
         }
+        logStep("redirect", url, detail = "no final link resolved")
         return currentUrl
     }
 
@@ -690,7 +696,7 @@ object LeovonixExtractors {
                 }
             }
         } catch (e: Throwable) {
-            Log.e("LeovonixExtractors", "Failed extracting $url: ${e.message}")
+            logStep("resolve", url, detail = e.message)
         }
     }
 
@@ -702,10 +708,16 @@ object LeovonixExtractors {
     ) {
         val base = DomainManager.originOf(url).ifBlank { "https://gdshine.org" }
         val id = url.substringAfterLast("/").substringBefore("?")
-        val infoJson = JSONObject(app.get("$base/api/files/s/$id", headers = mapOf("User-Agent" to UA)).text)
+        val infoText = runCatching { app.get("$base/api/files/s/$id", headers = mapOf("User-Agent" to UA)).text }
+            .onFailure { logStep("gdshine-info", "$base/api/files/s/$id", detail = it.message) }
+            .getOrNull() ?: return
+        val infoJson = JSONObject(infoText)
         val fileId = infoJson.optJSONObject("data")?.optString("id").orEmpty()
         if (fileId.isBlank()) return
-        val workerJson = JSONObject(app.post("$base/api/downloads/$fileId/via-worker", headers = mapOf("User-Agent" to UA)).text)
+        val workerText = runCatching { app.post("$base/api/downloads/$fileId/via-worker", headers = mapOf("User-Agent" to UA)).text }
+            .onFailure { logStep("gdshine-worker", "$base/api/downloads/$fileId/via-worker", detail = it.message) }
+            .getOrNull() ?: return
+        val workerJson = JSONObject(workerText)
         val dataObj = workerJson.optJSONObject("data")
         val workerUrl = listOf(
             dataObj?.optString("copyUrl"),
