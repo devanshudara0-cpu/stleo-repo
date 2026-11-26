@@ -95,8 +95,7 @@ object LeovonixExtractors {
         val u = url.lowercase()
         return u.contains("workers.dev") || u.contains("r2.cloudflarestorage") ||
             u.contains("googleusercontent") || u.contains("x-amz-") ||
-            u.contains("token=") || u.contains("expires=") ||
-            u.contains("signature=") || u.contains("sig=") || u.contains("hdnts=")
+            u.contains("expires=") || u.contains("signature=") || u.contains("hdnts=")
     }
 
     private fun decodeBase64Safe(raw: String): String? {
@@ -204,12 +203,20 @@ object LeovonixExtractors {
             probeHeaders.putAll(headers)
 
             for (step in 0 until 3) {
-                val probe = runCatching {
-                    if (isLikelyOneTimeUrl(cleanUrl)) probeHead(cleanUrl, probeHeaders)
+                val oneTime = isLikelyOneTimeUrl(cleanUrl)
+                var probe = runCatching {
+                    if (oneTime) probeHead(cleanUrl, probeHeaders)
                     else probeRange(cleanUrl, probeHeaders)
                 }.getOrElse {
                     Log.w("LeovonixExtractors", "Skipping unreachable stream (${it.message}): $cleanUrl")
                     return
+                }
+                if (oneTime && probe.code >= 400 && probe.code != 405 && probe.code != 416) {
+                    Log.i("LeovonixExtractors", "HEAD unsupported (${probe.code}), retrying with Range: $cleanUrl")
+                    probe = runCatching { probeRange(cleanUrl, probeHeaders) }.getOrElse {
+                        Log.w("LeovonixExtractors", "Skipping unreachable stream (${it.message}): $cleanUrl")
+                        return
+                    }
                 }
 
                 if (probe.code in 300..399 && !probe.location.isNullOrBlank()) {
@@ -409,11 +416,13 @@ object LeovonixExtractors {
 
             val anchor = Jsoup.parse(html, landedUrl).selectFirst(
                 "a[href*=hubcloud], a[href*=gdflix], a[href*=driveseed], a[href*=driveleech], " +
-                    "a[href*=hubdrive], a[href*=workers.dev], a[href*=r2.cloudflarestorage], " +
-                    "a[href*=googleusercontent], a.btn[href]"
+                    "a[href*=hubdrive], a[href*=gdshine], a[href*=fastdl], " +
+                    "a[href*=workers.dev], a[href*=r2.cloudflarestorage], " +
+                    "a[href*=googleusercontent]"
             )?.attr("href")?.trim()?.replace("&amp;", "&")?.replace("\\/", "/")
             if (!anchor.isNullOrBlank() && anchor.startsWith("http") &&
-                anchor != url && anchor != currentUrl && anchor != landedUrl && !isArchiveUrl(anchor)
+                anchor != url && anchor != currentUrl && anchor != landedUrl && !isArchiveUrl(anchor) &&
+                !anchor.contains("t.me") && !anchor.contains("telegram") && !anchor.contains("whatsapp")
             ) {
                 return anchor
             }
