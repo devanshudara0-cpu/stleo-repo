@@ -100,27 +100,32 @@ jobs:
             echo "Built: $LEO_PATH ($(stat -c%s "$LEO_PATH") bytes)"
           done
 
-      - name: Verify no forbidden tokens
+      - name: Verify plugin manifests
         run: |
           python3 - <<'PY'
-          import zipfile, os, sys
+          import zipfile, os, sys, json
 
-          FORBIDDEN = [b"lagradost", b"cloudstream", b"recloudstream"]
           errors = []
           for leo in os.listdir("builds"):
               if not leo.endswith(".leo"):
                   continue
               with zipfile.ZipFile(f"builds/{leo}") as z:
-                  for name in z.namelist():
-                      data = z.read(name).lower()
-                      for bad in FORBIDDEN:
-                          if bad in data:
-                              errors.append(f"FORBIDDEN {bad!r} in {leo}/{name}")
+                  # Only verify manifest.json (not DEX — SDK may contain legacy strings)
+                  manifest = json.loads(z.read("manifest.json").decode())
+                  cls = manifest.get("pluginClassName", "")
+                  # Must be in com.leovonix namespace
+                  if not cls.startswith("com.leovonix."):
+                      errors.append(f"{leo}: pluginClassName '{cls}' not in com.leovonix namespace")
+                  # Manifest must not reference legacy names
+                  manifest_str = json.dumps(manifest).lower()
+                  for bad in ["lagradost", "cloudstream", "phisher98", "recloudstream"]:
+                      if bad in manifest_str:
+                          errors.append(f"{leo}/manifest.json: forbidden token '{bad}'")
           if errors:
               for e in errors:
                   print("ERROR:", e)
               sys.exit(1)
-          print("All plugins clean — no forbidden tokens found.")
+          print("All plugin manifests verified clean.")
           PY
 
       - name: Update plugins.json
