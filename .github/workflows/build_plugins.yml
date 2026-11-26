@@ -92,7 +92,7 @@ jobs:
 
             # Write manifest.json
             cat > "$BUILD_OUT/dex/manifest.json" <<EOF
-          {"name":"$INTERNAL","pluginClassName":"$CLASS","version":105,"requiresResources":false}
+          {"name":"$INTERNAL","pluginClassName":"$CLASS","version":106,"requiresResources":false}
           EOF
 
             # Package into .leo
@@ -140,7 +140,7 @@ jobs:
           BASE_URL = "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds"
           ICONS_URL = "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons"
           REPO_URL = "https://github.com/devanshudara0-cpu/stleo-repo"
-          VERSION = 105
+          VERSION = 106
 
           # Provider metadata: internalName -> (displayName, buildFile, description, language, tvTypes, iconExt)
           PROVIDERS = {

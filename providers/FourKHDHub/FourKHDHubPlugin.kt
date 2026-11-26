@@ -108,13 +108,7 @@ class FourKHDHub : MainAPI() {
     private fun collectHostLinks(container: Element, base: String): List<String> {
         return container.select("a[href]")
             .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-            .filter { u ->
-                val l = u.lowercase()
-                l.contains("greenmotors") || l.contains("gadgetsweb") ||
-                    l.contains("hubcloud") || l.contains("hubdrive") ||
-                    l.contains("hblinks") || l.contains("gdflix") ||
-                    l.contains("?id=")
-            }
+            .filter { LeovonixExtractors.isCandidateLink(it) }
             .distinct()
     }
 

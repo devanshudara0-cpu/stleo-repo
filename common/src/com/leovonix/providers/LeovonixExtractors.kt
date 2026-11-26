@@ -83,6 +83,24 @@ object LeovonixExtractors {
             lower.contains(".rar%22") || lower.contains(".7z%22")
     }
 
+    fun isCandidateLink(url: String): Boolean {
+        val l = url.lowercase()
+        if (!l.startsWith("http") || isArchiveUrl(url)) return false
+        if (l.contains("t.me") || l.contains("telegram") || l.contains("whatsapp") ||
+            l.contains("facebook") || l.contains("twitter") || l.contains("instagram")
+        ) return false
+        val known = listOf(
+            "hubcloud", "vcloud", "hubdrive", "hblinks", "hubcdn", "gdflix", "gdshine",
+            "driveseed", "driveleech", "fastdl", "hcloud", "gofile", "pixeldrain",
+            "workers.dev", "r2.cloudflarestorage", "googleusercontent", "only-apis",
+            "mdrive", "nexdrive", "vegadrive", "hdstream4u", "vidstack", "linksmod",
+            "fxlinks", "fastdlserver", "gadgetsweb", "greenmotors", "thenaukriadda",
+            "unblocked", "modiplay", "iqsmartgames", "byse", "hshare", "boldb", "hdm.im",
+            "?sid=", "?id=", ".m3u8", ".mp4", ".mkv"
+        )
+        return known.any { l.contains(it) }
+    }
+
     private fun isArchiveMagic(prefix: String): Boolean {
         return prefix.startsWith("PK\u0003\u0004") ||
             prefix.startsWith("PK\u0005\u0006") ||

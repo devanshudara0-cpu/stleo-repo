@@ -138,15 +138,7 @@ class HDhub4u : MainAPI() {
         return newSearchResponseList(results, results.size >= 15)
     }
 
-    private fun isSupportedLink(u: String): Boolean {
-        val l = u.lowercase()
-        return l.startsWith("http") && (
-            l.contains("hblinks") || l.contains("hubdrive") || l.contains("hubcloud") ||
-                l.contains("hubcdn") || l.contains("hdstream4u") || l.contains("vidstack") ||
-                l.contains("greenmotors") || l.contains("gadgetsweb") || l.contains("gdflix") ||
-                l.contains("?id=")
-            )
-    }
+    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
