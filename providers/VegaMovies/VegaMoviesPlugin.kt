@@ -161,6 +161,44 @@ class VegaMovies : MainAPI() {
                 epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
             }
         }
+        if (epGrouped.isEmpty()) {
+            val nexUrls = content.select("a[href]")
+                .filter { a ->
+                    val t = a.text()
+                    !t.contains("zip", true) && !t.contains("batch", true)
+                }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .filter { it.lowercase().contains("nexdrive.") }
+                .distinct()
+                .take(4)
+            for (nexUrl in nexUrls) {
+                runCatching {
+                    val nexDoc = app.get(nexUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    val nexBody = nexDoc.selectFirst(".entry-content, .post-inner, main") ?: nexDoc.body()
+                    var currentEp: Int? = null
+                    for (el in nexBody.select("h2, h3, h4, h5, p")) {
+                        val epH = Regex("""(?i)Episodes?\s*:?\s*0*(\d+)""").find(el.text())
+                        if (epH != null) {
+                            currentEp = epH.groupValues[1].toIntOrNull()
+                        }
+                        val epNum = currentEp ?: continue
+                        val hrefs = el.select("a[href]")
+                            .mapNotNull { DomainManager.fixUrl(it.attr("href"), nexUrl) }
+                            .filter {
+                                val hl = it.lowercase()
+                                !hl.contains("nexdrive.") && (
+                                    hl.contains("fastdl") || hl.contains("vcloud") ||
+                                        hl.contains("hubcloud") || hl.contains("gdflix") ||
+                                        hl.contains("gofile") || hl.contains("vegadrive")
+                                    )
+                            }
+                        if (hrefs.isNotEmpty()) {
+                            epGrouped.getOrPut(epNum) { mutableListOf() }.addAll(hrefs)
+                        }
+                    }
+                }
+            }
+        }
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(

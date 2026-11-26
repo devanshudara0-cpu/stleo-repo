@@ -160,6 +160,37 @@ class MoviesDrive : MainAPI() {
                 epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
             }
         }
+        if (epGrouped.isEmpty()) {
+            val archiveUrls = content.select("a[href]")
+                .filter { a ->
+                    val t = a.text()
+                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true)
+                }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .filter { it.lowercase().contains("mdrive.") }
+                .distinct()
+                .take(4)
+            for (archUrl in archiveUrls) {
+                runCatching {
+                    val archDoc = app.get(archUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    val archBody = archDoc.selectFirst(".entry-content, .page-body, main") ?: archDoc.body()
+                    var currentEp: Int? = null
+                    for (el in archBody.select("h1, h2, h3, h4, h5, p")) {
+                        val epH = Regex("""(?i)\b(?:EP|Episode)\s*0*(\d+)""").find(el.text())
+                        if (epH != null) {
+                            currentEp = epH.groupValues[1].toIntOrNull()
+                        }
+                        val epNum = currentEp ?: continue
+                        val hrefs = el.select("a[href]")
+                            .mapNotNull { DomainManager.fixUrl(it.attr("href"), archUrl) }
+                            .filter { isSupportedLink(it) && !it.lowercase().contains("mdrive.") }
+                        if (hrefs.isNotEmpty()) {
+                            epGrouped.getOrPut(epNum) { mutableListOf() }.addAll(hrefs)
+                        }
+                    }
+                }
+            }
+        }
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(

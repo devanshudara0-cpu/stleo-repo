@@ -132,6 +132,32 @@ class BollyFlix : MainAPI() {
                 epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
             }
         }
+        if (epGrouped.isEmpty()) {
+            val fxUrls = content.select("a[href]")
+                .filter { a ->
+                    val t = a.text()
+                    !t.contains("zip", true) && !t.contains("batch", true)
+                }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .filter { val l = it.lowercase(); l.contains("fxlinks.") || l.contains("linksmod.") }
+                .distinct()
+                .take(4)
+            for (fxUrl in fxUrls) {
+                runCatching {
+                    val fxDoc = app.get(fxUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    for (a in fxDoc.select("a[href]")) {
+                        val txt = a.text().trim()
+                        if (txt.contains("zip", true) || txt.contains("batch", true)) continue
+                        val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(txt) ?: continue
+                        val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
+                        val href = DomainManager.fixUrl(a.attr("href"), fxUrl) ?: continue
+                        if (isSupportedLink(href) && !href.lowercase().contains("fxlinks.")) {
+                            epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
+                        }
+                    }
+                }
+            }
+        }
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(

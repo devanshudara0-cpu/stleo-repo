@@ -4,6 +4,7 @@ import com.stleo.api.Log
 import com.stleo.ott.SubtitleFile
 import com.stleo.ott.app
 import com.stleo.ott.base64Decode
+import com.stleo.ott.extractors.ByseSX
 import com.stleo.ott.utils.ExtractorLink
 import com.stleo.ott.utils.ExtractorLinkType
 import com.stleo.ott.utils.JsUnpacker
@@ -11,9 +12,12 @@ import com.stleo.ott.utils.Qualities
 import com.stleo.ott.utils.getQualityFromName
 import com.stleo.ott.utils.loadExtractor
 import com.stleo.ott.utils.newExtractorLink
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
@@ -73,22 +77,76 @@ object LeovonixExtractors {
         val lower = url.lowercase()
         val path = lower.substringBefore("?")
         return path.endsWith(".zip") || path.endsWith(".rar") || path.endsWith(".7z") ||
-            lower.contains(".zip&") || lower.contains(".zip%22") || lower.contains(".zip\"")
+            lower.contains(".zip&") || lower.contains(".zip%22") || lower.contains(".zip\"") ||
+            lower.contains(".rar%22") || lower.contains(".7z%22")
+    }
+
+    private fun decodeBase64Safe(raw: String): String? {
+        return runCatching {
+            val cleaned = raw.trim().replace('-', '+').replace('_', '/')
+            val pad = (4 - cleaned.length % 4) % 4
+            base64Decode(cleaned + "=".repeat(pad)).trim()
+        }.getOrNull()
     }
 
     private fun unwrapRedirectQuery(url: String): String {
         var cur = url.replace("&amp;", "&").trim()
-        if (cur.contains("dl.php?link=")) {
-            val inner = cur.substringAfter("dl.php?link=")
-            if (inner.startsWith("http")) cur = inner
-        }
-        val urlParamMatch = Regex("""[?&]url=([^&]+)""").find(cur)
-        if (urlParamMatch != null) {
-            runCatching { URLDecoder.decode(urlParamMatch.groupValues[1], "UTF-8") }.getOrNull()?.let {
-                if (it.startsWith("http")) cur = it
+        for (i in 0 until 4) {
+            if (cur.contains("dl.php?link=")) {
+                val inner = cur.substringAfter("dl.php?link=")
+                if (inner.startsWith("http")) {
+                    cur = inner
+                    continue
+                }
             }
+            val urlParamMatch = Regex("""[?&]url=([^&]+)""").find(cur) ?: break
+            val decoded = runCatching { URLDecoder.decode(urlParamMatch.groupValues[1], "UTF-8") }.getOrNull()?.trim()
+            if (!decoded.isNullOrBlank()) {
+                if (decoded.startsWith("http")) {
+                    cur = decoded
+                    continue
+                }
+                val b64 = decodeBase64Safe(decoded)
+                if (!b64.isNullOrBlank() && b64.startsWith("http")) {
+                    cur = b64
+                    continue
+                }
+            }
+            break
         }
-        return cur
+        return cur.replace(" ", "%20")
+    }
+
+    private data class ProbeResult(
+        val code: Int,
+        val location: String?,
+        val contentType: String,
+        val disposition: String,
+        val prefix: String,
+    )
+
+    private suspend fun probeRange(url: String, headers: Map<String, String>): ProbeResult = withContext(Dispatchers.IO) {
+        val client = app.baseClient.newBuilder().followRedirects(false).build()
+        val reqBuilder = Request.Builder()
+            .url(url)
+            .header("Range", "bytes=0-511")
+        headers.forEach { (k, v) -> reqBuilder.header(k, v) }
+        client.newCall(reqBuilder.build()).execute().use { resp ->
+            val ct = resp.header("Content-Type").orEmpty().lowercase()
+            val disp = resp.header("Content-Disposition").orEmpty().lowercase()
+            val loc = resp.header("Location")?.trim()
+            val bytes = if (resp.code in 200..299) {
+                val source = resp.body?.source()
+                if (source != null) {
+                    source.request(512)
+                    val len = minOf(source.buffer.size, 512L).toInt()
+                    val arr = ByteArray(len)
+                    if (len > 0) source.readFully(arr)
+                    String(arr, Charsets.ISO_8859_1)
+                } else ""
+            } else ""
+            ProbeResult(resp.code, loc, ct, disp, bytes)
+        }
     }
 
     suspend fun emitDirectLink(
@@ -110,51 +168,61 @@ object LeovonixExtractors {
             if (referer.isNotBlank()) probeHeaders["Referer"] = referer
             probeHeaders.putAll(headers)
 
-            for (step in 0 until 2) {
+            for (step in 0 until 3) {
                 val probe = runCatching {
-                    app.head(cleanUrl, headers = probeHeaders, allowRedirects = false, timeout = 10L)
+                    probeRange(cleanUrl, probeHeaders)
                 }.getOrElse {
                     Log.w("LeovonixExtractors", "Skipping unreachable stream (${it.message}): $cleanUrl")
                     return
                 }
 
-                val loc = probe.headers["location"]?.trim()
-                if (probe.code in 300..399 && !loc.isNullOrBlank()) {
-                    val nextUrl = unwrapRedirectQuery(DomainManager.fixUrl(loc, cleanUrl) ?: loc)
+                if (probe.code in 300..399 && !probe.location.isNullOrBlank()) {
+                    val nextUrl = unwrapRedirectQuery(DomainManager.fixUrl(probe.location, cleanUrl) ?: probe.location)
                     if (isArchiveUrl(nextUrl)) return
                     if (nextUrl.startsWith("http")) {
                         cleanUrl = nextUrl
                         continue
                     }
                 }
-                if (probe.code == 405) {
-                    // Some video CDNs disallow HEAD; allow ExoPlayer GET directly.
+                if (probe.code == 416) {
+                    // Server rejected Range=0-511 but file exists; allow ExoPlayer to GET directly.
                     break
                 }
                 if (probe.code >= 400) {
                     Log.w("LeovonixExtractors", "Skipping dead stream (${probe.code}): $cleanUrl")
                     return
                 }
-                val disp = probe.headers["content-disposition"]?.lowercase().orEmpty()
-                if (disp.contains(".zip") || disp.contains(".rar") || disp.contains(".7z")) {
+                if (probe.disposition.contains(".zip") || probe.disposition.contains(".rar") || probe.disposition.contains(".7z")) {
                     return
                 }
-                val ct = probe.headers["content-type"]?.lowercase().orEmpty()
-                if (ct.contains("application/zip") || ct.contains("application/x-rar")) {
+                if (probe.contentType.contains("application/zip") || probe.contentType.contains("application/x-zip") ||
+                    probe.contentType.contains("application/x-rar") || probe.prefix.startsWith("PK\u0003\u0004")
+                ) {
+                    Log.w("LeovonixExtractors", "Skipping archive stream: $cleanUrl")
                     return
                 }
-                if (ct.contains("text/html")) {
+                val looksHtml = probe.contentType.contains("text/html") ||
+                    probe.prefix.trimStart().startsWith("<!", ignoreCase = true) ||
+                    probe.prefix.trimStart().startsWith("<html", ignoreCase = true)
+                if (looksHtml) {
                     val body = runCatching { app.get(cleanUrl, headers = probeHeaders, timeout = 12L).text }.getOrDefault("")
                     val nested = Regex("""https?://video-downloads\.googleusercontent\.com/[^\s"'<>]+""")
                         .find(body)?.value
+                        ?: Regex("""var\s+reurl\s*=\s*["']([^"']+)["']""").find(body)?.groupValues?.get(1)
                         ?: Regex("""[?&]url=([^"'\s<>]+)""").find(body)?.groupValues?.get(1)?.let {
                             runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull()
                         }
-                    if (!nested.isNullOrBlank() && nested.startsWith("http") && !isArchiveUrl(nested)) {
-                        cleanUrl = nested
-                        break
+                        ?: Jsoup.parse(body, cleanUrl).selectFirst("a[href*=workers.dev], a[href*=r2.cloudflarestorage], a[href*=googleusercontent]")?.attr("href")
+                    val resolvedNested = nested?.let { unwrapRedirectQuery(it) }
+                    if (!resolvedNested.isNullOrBlank() && resolvedNested.startsWith("http") && !isArchiveUrl(resolvedNested)) {
+                        cleanUrl = resolvedNested
+                        continue
                     }
-                    Log.w("LeovonixExtractors", "Skipping HTML response ($ct): $cleanUrl")
+                    Log.w("LeovonixExtractors", "Skipping HTML response (${probe.contentType}): $cleanUrl")
+                    return
+                }
+                if (probe.contentType.contains("application/json") || probe.prefix.trimStart().startsWith("{\"error")) {
+                    Log.w("LeovonixExtractors", "Skipping JSON error response: $cleanUrl")
                     return
                 }
                 break
@@ -393,6 +461,15 @@ object LeovonixExtractors {
                     }
                 }
 
+                lower.contains("hcloud.shop") -> {
+                    val decoded = unwrapRedirectQuery(url)
+                    if (decoded != url && decoded.startsWith("http") && !decoded.contains("hcloud.shop")) {
+                        resolveLinks(decoded, sourceName, url, q, subtitleCallback, callback, depth + 1)
+                    } else {
+                        extractGenericHtmlMedia(url, sourceName, referer, q, subtitleCallback, callback, depth)
+                    }
+                }
+
                 lower.contains("boldb.") || lower.contains("hshare.") -> {
                     val doc = app.get(url, referer = referer, headers = mapOf("User-Agent" to UA)).document
                     val links = doc.select("a[href]")
@@ -451,6 +528,10 @@ object LeovonixExtractors {
 
                 lower.contains("hdm2") -> {
                     extractGenericHtmlMedia(url, sourceName, referer, q, subtitleCallback, callback, depth)
+                }
+
+                lower.contains("byse") -> {
+                    ByseSX().getUrl(url, referer, subtitleCallback, callback)
                 }
 
                 lower.contains("pixeldrain.") -> {
@@ -517,10 +598,15 @@ object LeovonixExtractors {
         val fileId = infoJson.optJSONObject("data")?.optString("id").orEmpty()
         if (fileId.isBlank()) return
         val workerJson = JSONObject(app.post("$base/api/downloads/$fileId/via-worker", headers = mapOf("User-Agent" to UA)).text)
-        val workerUrl = workerJson.optJSONObject("data")?.optString("worker_url")
-            ?: workerJson.optJSONObject("data")?.optString("url")
-            ?: workerJson.optString("url")
-        if (!workerUrl.isNullOrBlank() && workerUrl.startsWith("http")) {
+        val dataObj = workerJson.optJSONObject("data")
+        val workerUrl = listOf(
+            dataObj?.optString("copyUrl"),
+            dataObj?.optString("worker_url"),
+            dataObj?.optString("url"),
+            workerJson.optString("copyUrl"),
+            workerJson.optString("url"),
+        ).firstOrNull { !it.isNullOrBlank() && it.startsWith("http") }
+        if (!workerUrl.isNullOrBlank()) {
             emitDirectLink(sourceName, "$sourceName Gdshine", workerUrl, base, quality, callback = callback)
         }
     }
@@ -542,12 +628,24 @@ object LeovonixExtractors {
         if (isArchiveUrl(fileTitle)) return
         val q = getQualityFromName(fileTitle).takeIf { it != Qualities.Unknown.value } ?: quality
 
-        val links = doc.select("a.btn[href], a[href*=workers.dev], a[href*=drivebot], a[href*=pixeldrain], a[href*=hubcloud], a[href*=gofile]")
+        val links = doc.select("a.btn[href], a[href*=workers.dev], a[href*=drivebot], a[href*=pixeldrain], a[href*=hubcloud], a[href*=gofile], a[href*=/cflare/]")
         links.toList().safeForEach { a ->
             val href = DomainManager.fixUrl(a.attr("href"), base) ?: return@safeForEach
             val text = a.text()
             val hl = href.lowercase()
             when {
+                hl.contains("/cflare/") || text.contains("fast cloud", ignoreCase = true) -> {
+                    val cfDoc = runCatching { app.get(href, referer = finalUrl, headers = mapOf("User-Agent" to UA)).document }.getOrNull()
+                    val direct = cfDoc?.select("a[href]")
+                        ?.mapNotNull { el -> DomainManager.fixUrl(el.attr("href"), base)?.replace(" ", "%20") }
+                        ?.firstOrNull { u ->
+                            val ul = u.lowercase()
+                            (ul.contains(".workers.dev") || ul.contains("googleusercontent") || ul.contains("r2.")) && !isArchiveUrl(u)
+                        }
+                    if (!direct.isNullOrBlank()) {
+                        emitDirectLink(sourceName, "$sourceName FastCloud", direct, href, q, callback = callback)
+                    }
+                }
                 hl.contains("?url=") || hl.contains("&url=") || hl.contains("fastcdn-dl.") -> {
                     emitDirectLink(sourceName, "$sourceName Cloud", unwrapRedirectQuery(href), finalUrl, q, callback = callback)
                 }
@@ -698,7 +796,7 @@ object LeovonixExtractors {
                     resolveLinks(href, sourceName, targetUrl, q, subtitleCallback, callback, depth + 1)
                 }
                 tl.contains("fsl") || tl.contains("10gbps") || tl.contains("server") ||
-                    hl.contains("r2.dev") || hl.contains("r2.cloudflarestorage") ||
+                    hl.contains("t3dl") || hl.contains("r2.dev") || hl.contains("r2.cloudflarestorage") ||
                     hl.contains("workers.dev") || hl.contains("googleusercontent") -> {
                     emitDirectLink(sourceName, "$sourceName $text", href, targetUrl, q, callback = callback)
                 }
@@ -772,7 +870,7 @@ object LeovonixExtractors {
                     url = u,
                     referer = landedUrl,
                     quality = quality,
-                    headers = mapOf("User-Agent" to UA),
+                    headers = mapOf("User-Agent" to UA, "Origin" to landedBase),
                     callback = callback,
                 )
             }
@@ -789,7 +887,7 @@ object LeovonixExtractors {
                     referer = landedUrl,
                     quality = quality,
                     isM3u8 = true,
-                    headers = mapOf("User-Agent" to UA),
+                    headers = mapOf("User-Agent" to UA, "Origin" to landedBase),
                     verifyHttp = false,
                     callback = callback,
                 )

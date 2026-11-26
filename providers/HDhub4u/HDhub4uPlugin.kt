@@ -163,20 +163,25 @@ class HDhub4u : MainAPI() {
             val t = h.text()
             t.contains("EPiSODE", true) || Regex("""Episode\s*\d+""", RegexOption.IGNORE_CASE).containsMatchIn(t)
         }
-        if (episodeHeadings.isNotEmpty() && content.select("h4 a[href], h3 a[href]").any { isSupportedLink(it.attr("href")) }) {
+        if (episodeHeadings.isNotEmpty() && content.select("h4 a[href], h3 a[href], p a[href]").any { isSupportedLink(it.attr("href")) }) {
             val grouped = linkedMapOf<String, MutableList<String>>()
-            var currentEp = "Episode 1"
+            var currentEp: String? = null
             for (el in content.select("h3, h4, h5, p")) {
                 val txt = el.text().trim()
                 val epMatch = Regex("""(?i)EPiSODE\s*(\d+)|Episode\s*(\d+)""").find(txt)
                 if (epMatch != null) {
                     val num = epMatch.groupValues[1].ifBlank { epMatch.groupValues[2] }
                     currentEp = "Episode $num"
+                } else if (txt.contains("Pack", true) || txt.contains("Zip", true) || txt.contains("Batch", true)) {
+                    currentEp = null
                 }
-                val hrefs = el.select("a[href]").mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                val epKey = currentEp ?: continue
+                val hrefs = el.select("a[href]")
+                    .filter { a -> !a.text().contains("Pack", true) && !a.text().contains("Zip", true) }
+                    .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
                     .filter { isSupportedLink(it) }
                 if (hrefs.isNotEmpty()) {
-                    grouped.getOrPut(currentEp) { mutableListOf() }.addAll(hrefs)
+                    grouped.getOrPut(epKey) { mutableListOf() }.addAll(hrefs)
                 }
             }
             if (grouped.size > 1) {

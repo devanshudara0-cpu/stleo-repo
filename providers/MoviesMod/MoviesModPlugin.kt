@@ -132,6 +132,33 @@ class MoviesMod : MainAPI() {
                 epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
             }
         }
+        if (epGrouped.isEmpty()) {
+            val modproUrls = content.select("a[href]")
+                .filter { a ->
+                    val t = a.text()
+                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true)
+                }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .filter { it.lowercase().contains("modpro.") }
+                .distinct()
+                .take(4)
+            for (epPage in modproUrls) {
+                runCatching {
+                    val epDoc = app.get(epPage, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    val epBody = epDoc.selectFirst(".entry-content, .thecontent, main") ?: epDoc.body()
+                    for (a in epBody.select("a[href]")) {
+                        val txt = a.text().trim()
+                        if (txt.contains("batch", true) || txt.contains("zip", true)) continue
+                        val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(txt) ?: continue
+                        val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
+                        val href = DomainManager.fixUrl(a.attr("href"), epPage) ?: continue
+                        if (isSupportedLink(href) && !href.lowercase().contains("modpro.")) {
+                            epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
+                        }
+                    }
+                }
+            }
+        }
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(
