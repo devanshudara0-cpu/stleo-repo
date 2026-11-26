@@ -53,7 +53,9 @@ object LeovonixExtractors {
         return if (trimmed.isNotBlank()) listOf(trimmed) else emptyList()
     }
 
-    private val REDIRECT_REGEX = Regex("""s\('o','([A-Za-z0-9+/=]+)'|ck\('_wp_http_\d+','([^']+)'""")
+    private val REDIRECT_REGEX = Regex(
+        """s\(\s*['"]o['"]\s*,\s*['"]([A-Za-z0-9+/=]+)['"]|ck\(\s*['"]_wp_http_\d+['"]\s*,\s*['"]([^'"]+)['"]"""
+    )
     private val LP_FORM_REGEX = Regex("""(?is)<form[^>]*action=["']([^"']+)["'][^>]*>(.*?)</form>""")
     private val LP_INPUT_REGEX = Regex("""(?is)<input[^>]+name=["']([^"']+)["'][^>]+value=["']([^"']*)["']""")
     private val M3U8_OR_VIDEO_REGEX = Regex("""https?://[^\s"'<>]+(?:\.m3u8|\.mp4|\.mkv)(?:\?[^\s"'<>]*)?""")
@@ -79,6 +81,22 @@ object LeovonixExtractors {
         return path.endsWith(".zip") || path.endsWith(".rar") || path.endsWith(".7z") ||
             lower.contains(".zip&") || lower.contains(".zip%22") || lower.contains(".zip\"") ||
             lower.contains(".rar%22") || lower.contains(".7z%22")
+    }
+
+    private fun isArchiveMagic(prefix: String): Boolean {
+        return prefix.startsWith("PK\u0003\u0004") ||
+            prefix.startsWith("PK\u0005\u0006") ||
+            prefix.startsWith("PK\u0007\u0008") ||
+            prefix.startsWith("Rar!\u001A\u0007") ||
+            prefix.startsWith("7z\u00BC\u00AF'\u001C")
+    }
+
+    private fun isLikelyOneTimeUrl(url: String): Boolean {
+        val u = url.lowercase()
+        return u.contains("workers.dev") || u.contains("r2.cloudflarestorage") ||
+            u.contains("googleusercontent") || u.contains("x-amz-") ||
+            u.contains("token=") || u.contains("expires=") ||
+            u.contains("signature=") || u.contains("sig=") || u.contains("hdnts=")
     }
 
     private fun decodeBase64Safe(raw: String): String? {
@@ -149,6 +167,23 @@ object LeovonixExtractors {
         }
     }
 
+    private suspend fun probeHead(url: String, headers: Map<String, String>): ProbeResult = withContext(Dispatchers.IO) {
+        val client = app.baseClient.newBuilder().followRedirects(false).build()
+        val reqBuilder = Request.Builder()
+            .url(url)
+            .head()
+        headers.forEach { (k, v) -> reqBuilder.header(k, v) }
+        client.newCall(reqBuilder.build()).execute().use { resp ->
+            ProbeResult(
+                code = resp.code,
+                location = resp.header("Location")?.trim(),
+                contentType = resp.header("Content-Type").orEmpty().lowercase(),
+                disposition = resp.header("Content-Disposition").orEmpty().lowercase(),
+                prefix = "",
+            )
+        }
+    }
+
     suspend fun emitDirectLink(
         source: String,
         label: String,
@@ -170,7 +205,8 @@ object LeovonixExtractors {
 
             for (step in 0 until 3) {
                 val probe = runCatching {
-                    probeRange(cleanUrl, probeHeaders)
+                    if (isLikelyOneTimeUrl(cleanUrl)) probeHead(cleanUrl, probeHeaders)
+                    else probeRange(cleanUrl, probeHeaders)
                 }.getOrElse {
                     Log.w("LeovonixExtractors", "Skipping unreachable stream (${it.message}): $cleanUrl")
                     return
@@ -188,6 +224,10 @@ object LeovonixExtractors {
                     // Server rejected Range=0-511 but file exists; allow ExoPlayer to GET directly.
                     break
                 }
+                if (probe.code == 405) {
+                    // Some CDNs reject HEAD but allow GET; let ExoPlayer try.
+                    break
+                }
                 if (probe.code >= 400) {
                     Log.w("LeovonixExtractors", "Skipping dead stream (${probe.code}): $cleanUrl")
                     return
@@ -195,8 +235,12 @@ object LeovonixExtractors {
                 if (probe.disposition.contains(".zip") || probe.disposition.contains(".rar") || probe.disposition.contains(".7z")) {
                     return
                 }
-                if (probe.contentType.contains("application/zip") || probe.contentType.contains("application/x-zip") ||
-                    probe.contentType.contains("application/x-rar") || probe.prefix.startsWith("PK\u0003\u0004")
+                if (probe.contentType.contains("application/zip") ||
+                    probe.contentType.contains("application/x-zip") ||
+                    probe.contentType.contains("application/x-rar") ||
+                    probe.contentType.contains("application/vnd.rar") ||
+                    probe.contentType.contains("application/x-7z-compressed") ||
+                    isArchiveMagic(probe.prefix)
                 ) {
                     Log.w("LeovonixExtractors", "Skipping archive stream: $cleanUrl")
                     return
@@ -267,11 +311,13 @@ object LeovonixExtractors {
             if (cookies.isNotEmpty()) {
                 hdrs["Cookie"] = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
             }
+            val requestData = postData
+            postData = null
             val res = runCatching {
-                if (postData == null) {
+                if (requestData == null) {
                     app.get(currentUrl, headers = hdrs, referer = currentRef)
                 } else {
-                    app.post(currentUrl, headers = hdrs, referer = currentRef, data = postData)
+                    app.post(currentUrl, headers = hdrs, referer = currentRef, data = requestData)
                 }
             }.getOrNull() ?: break
 
@@ -359,6 +405,17 @@ object LeovonixExtractors {
                 .find(html)?.groupValues?.get(1)?.replace("\\/", "/")?.trim()
             if (!jsRedir.isNullOrBlank() && jsRedir.startsWith("http") && jsRedir != landedUrl && !jsRedir.contains("cloudflare") && !jsRedir.contains("google")) {
                 return jsRedir
+            }
+
+            val anchor = Jsoup.parse(html, landedUrl).selectFirst(
+                "a[href*=hubcloud], a[href*=gdflix], a[href*=driveseed], a[href*=driveleech], " +
+                    "a[href*=hubdrive], a[href*=workers.dev], a[href*=r2.cloudflarestorage], " +
+                    "a[href*=googleusercontent], a.btn[href]"
+            )?.attr("href")?.trim()?.replace("&amp;", "&")?.replace("\\/", "/")
+            if (!anchor.isNullOrBlank() && anchor.startsWith("http") &&
+                anchor != url && anchor != currentUrl && anchor != landedUrl && !isArchiveUrl(anchor)
+            ) {
+                return anchor
             }
 
             if (landedUrl != url && !landedUrl.contains("?sid=") && !landedUrl.contains("?id=")) {
@@ -607,7 +664,15 @@ object LeovonixExtractors {
             workerJson.optString("url"),
         ).firstOrNull { !it.isNullOrBlank() && it.startsWith("http") }
         if (!workerUrl.isNullOrBlank()) {
-            emitDirectLink(sourceName, "$sourceName Gdshine", workerUrl, base, quality, callback = callback)
+            emitDirectLink(
+                source = sourceName,
+                label = "$sourceName Gdshine",
+                url = workerUrl,
+                referer = base,
+                quality = quality,
+                verifyHttp = false,
+                callback = callback,
+            )
         }
     }
 
