@@ -5,6 +5,7 @@ import com.stleo.ott.SearchQuality
 import com.stleo.ott.app
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.net.URI
@@ -22,14 +23,16 @@ object DomainManager {
 
     suspend fun getDomain(key: String, fallback: String): String {
         val now = System.currentTimeMillis()
-        if (cachedDomains.isNotEmpty() && now - lastFetchedAt < TTL_MS) {
+        if (lastFetchedAt != 0L && now - lastFetchedAt < TTL_MS) {
             return cachedDomains[key]?.trimEnd('/')?.takeIf { it.startsWith("http") } ?: fallback.trimEnd('/')
         }
         mutex.withLock {
             val recheck = System.currentTimeMillis()
-            if (cachedDomains.isEmpty() || recheck - lastFetchedAt >= TTL_MS) {
+            if (lastFetchedAt == 0L || recheck - lastFetchedAt >= TTL_MS) {
                 runCatching {
-                    val text = app.get(DOMAINS_URL).text
+                    val text = withTimeout(8_000L) {
+                        app.get(DOMAINS_URL, timeout = 8L).text
+                    }
                     val obj = JSONObject(text)
                     val map = mutableMapOf<String, String>()
                     val keys = obj.keys()
@@ -42,11 +45,11 @@ object DomainManager {
                     }
                     if (map.isNotEmpty()) {
                         cachedDomains = map
-                        lastFetchedAt = recheck
                     }
+                    lastFetchedAt = recheck
                 }.onFailure {
                     Log.w("DomainManager", "Using fallback domain for $key: ${it.message}")
-                    if (lastFetchedAt == 0L) lastFetchedAt = recheck
+                    lastFetchedAt = recheck
                 }
             }
         }

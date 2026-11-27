@@ -12,17 +12,20 @@ import com.stleo.ott.utils.Qualities
 import com.stleo.ott.utils.getQualityFromName
 import com.stleo.ott.utils.loadExtractor
 import com.stleo.ott.utils.newExtractorLink
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.net.URLDecoder
+import java.util.concurrent.TimeUnit
 
 object LeovonixExtractors {
     const val UA =
@@ -33,7 +36,7 @@ object LeovonixExtractors {
         repeat(3) {
             launch {
                 for (item in channel) {
-                    runCatching { block(item) }
+                    runCatching { withTimeout(30_000L) { block(item) } }
                         .onFailure { Log.e("LeovonixExtractors", "Task failed: ${it.message}") }
                 }
             }
@@ -197,7 +200,10 @@ object LeovonixExtractors {
     )
 
     private suspend fun probeRange(url: String, headers: Map<String, String>): ProbeResult = withContext(Dispatchers.IO) {
-        val client = app.baseClient.newBuilder().followRedirects(false).build()
+        val client = app.baseClient.newBuilder()
+            .followRedirects(false)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
         val reqBuilder = Request.Builder()
             .url(url)
             .header("Range", "bytes=0-511")
@@ -221,7 +227,10 @@ object LeovonixExtractors {
     }
 
     private suspend fun probeHead(url: String, headers: Map<String, String>): ProbeResult = withContext(Dispatchers.IO) {
-        val client = app.baseClient.newBuilder().followRedirects(false).build()
+        val client = app.baseClient.newBuilder()
+            .followRedirects(false)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
         val reqBuilder = Request.Builder()
             .url(url)
             .head()
@@ -241,7 +250,12 @@ object LeovonixExtractors {
         val reqBuilder = Request.Builder().url(url).header("User-Agent", UA)
         if (!referer.isNullOrBlank()) reqBuilder.header("Referer", referer)
         runCatching {
-            app.baseClient.newCall(reqBuilder.build()).execute().use { resp ->
+            app.baseClient.newBuilder()
+                .callTimeout(20, TimeUnit.SECONDS)
+                .build()
+                .newCall(reqBuilder.build())
+                .execute()
+                .use { resp ->
                 val landed = resp.request.url.toString()
                 val src = resp.body?.source() ?: return@use "" to landed
                 val max = 1_500_000
@@ -789,6 +803,8 @@ object LeovonixExtractors {
                     }
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             logStep("resolve", url, detail = e.message)
         }
