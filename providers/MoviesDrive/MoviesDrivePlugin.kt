@@ -39,7 +39,7 @@ class MoviesDrivePlugin : Plugin() {
 }
 
 class MoviesDrive : MainAPI() {
-    override var mainUrl = "https://new4.moviesdrive.cyou"
+    override var mainUrl = "https://new5.moviesdrive.cyou"
     override var name = "MoviesDrive"
     override var lang = "hi"
     override val hasMainPage = true

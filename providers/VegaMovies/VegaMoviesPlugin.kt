@@ -179,11 +179,9 @@ class VegaMovies : MainAPI() {
                             .mapNotNull { DomainManager.fixUrl(it.attr("href"), nexUrl) }
                             .filter {
                                 val hl = it.lowercase()
-                                !hl.contains("nexdrive.") && (
-                                    hl.contains("fastdl") || hl.contains("vcloud") ||
-                                        hl.contains("hubcloud") || hl.contains("gdflix") ||
-                                        hl.contains("gofile") || hl.contains("vegadrive")
-                                    )
+                                LeovonixExtractors.isCandidateLink(it) &&
+                                    !hl.contains("nexdrive.") &&
+                                    !hl.contains("vglist.")
                             }
                         if (hrefs.isNotEmpty()) {
                             epGrouped.getOrPut(epNum) { mutableListOf() }.addAll(hrefs)

@@ -37,7 +37,7 @@ class MoviesModPlugin : Plugin() {
 }
 
 class MoviesMod : MainAPI() {
-    override var mainUrl = "https://moviesmod.fi"
+    override var mainUrl = "https://moviesmod.free"
     override var name = "MoviesMod"
     override var lang = "hi"
     override val hasMainPage = true

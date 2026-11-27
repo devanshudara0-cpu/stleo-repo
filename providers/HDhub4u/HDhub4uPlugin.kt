@@ -39,7 +39,7 @@ class HDhub4uPlugin : Plugin() {
 }
 
 class HDhub4u : MainAPI() {
-    override var mainUrl = "https://new16.hdhub4u.cl"
+    override var mainUrl = "https://new17.hdhub4u.cl"
     override var name = "HDhub4u"
     override var lang = "hi"
     override val hasMainPage = true

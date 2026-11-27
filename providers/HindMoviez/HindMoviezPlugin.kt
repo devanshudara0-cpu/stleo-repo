@@ -126,6 +126,32 @@ class HindMoviez : MainAPI() {
                 epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
             }
         }
+        if (epGrouped.isEmpty()) {
+            val mvUrls = content.select("a[href]")
+                .filter { a ->
+                    val t = a.text()
+                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true)
+                }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .filter { it.lowercase().contains("mvlink.") }
+                .distinct()
+                .take(4)
+            for (mvUrl in mvUrls) {
+                runCatching {
+                    val mvDoc = app.get(mvUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    for (a in mvDoc.select("a[href]")) {
+                        val txt = a.text().trim()
+                        val href = DomainManager.fixUrl(a.attr("href"), mvUrl) ?: continue
+                        if (!isSupportedLink(href) || href.lowercase().contains("mvlink.")) continue
+                        if (txt.contains("zip", true) || txt.contains("batch", true)) continue
+                        val epNum = Regex("""(?i)Episode\s*0*(\d+)""").find(txt)?.groupValues?.get(1)?.toIntOrNull()
+                            ?: Regex("""(?i)S\d+E0*(\d+)""").find("$txt $href")?.groupValues?.get(1)?.toIntOrNull()
+                            ?: continue
+                        epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
+                    }
+                }
+            }
+        }
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(
