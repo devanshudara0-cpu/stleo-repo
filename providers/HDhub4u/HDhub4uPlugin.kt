@@ -90,8 +90,10 @@ class HDhub4u : MainAPI() {
             page <= 1 -> "$base/$path"
             else -> "$base/${path.trimEnd('/')}/page/$page/"
         }
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("ul.recent-movies li.thumb").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("hdhub4u", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("ul.recent-movies li.thumb").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -107,6 +109,7 @@ class HDhub4u : MainAPI() {
             val resText = app.get(
                 searchUrl,
                 headers = mapOf("User-Agent" to LeovonixExtractors.UA, "Referer" to "$base/"),
+                timeout = 10L,
             ).text
             val hits = JSONObject(resText).optJSONArray("hits") ?: JSONArray()
             for (i in 0 until hits.length()) {
@@ -132,30 +135,33 @@ class HDhub4u : MainAPI() {
         }.isSuccess
 
         if (!ok || results.isEmpty()) {
-            val doc = app.get("$base/page/$page/?s=$q", headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-            doc.select("ul.recent-movies li.thumb").mapNotNull { it.toCard(base) }.let { results.addAll(it) }
+            val (doc, landed) = DomainManager.fetchDocument("hdhub4u", "$base/page/$page/?s=$q", base)
+            val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+            doc.select("ul.recent-movies li.thumb").mapNotNull { it.toCard(effectiveBase) }.let { results.addAll(it) }
         }
         return newSearchResponseList(results, results.size >= 15)
     }
 
-    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
+    private fun isSupportedLink(u: String, text: String? = null): Boolean =
+        LeovonixExtractors.isCandidateLink(u, text)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val (doc, normalized) = DomainManager.fetchDocument("hdhub4u", url, base)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1.page-title, h1.entry-title, h1")?.text().orEmpty()
         ).ifBlank { "Movie" }
         val content = doc.selectFirst(".page-body, .entry-content, main") ?: doc.body()
-        val poster = DomainManager.extractPoster(content, base)
+        val poster = DomainManager.extractPoster(content, effectiveBase)
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(title)?.groupValues?.get(1)?.toIntOrNull()
 
         val episodeHeadings = content.select("h3, h4, h5").filter { h ->
             val t = h.text()
             t.contains("EPiSODE", true) || Regex("""Episode\s*\d+""", RegexOption.IGNORE_CASE).containsMatchIn(t)
         }
-        if (episodeHeadings.isNotEmpty() && content.select("h4 a[href], h3 a[href], p a[href]").any { isSupportedLink(it.attr("href")) }) {
+        if (episodeHeadings.isNotEmpty() && content.select("h4 a[href], h3 a[href], p a[href]").any { isSupportedLink(it.attr("href"), it.text()) }) {
             val grouped = linkedMapOf<String, MutableList<String>>()
             var currentEp: String? = null
             for (el in content.select("h3, h4, h5, p")) {
@@ -170,8 +176,7 @@ class HDhub4u : MainAPI() {
                 val epKey = currentEp ?: continue
                 val hrefs = el.select("a[href]")
                     .filter { a -> !a.text().contains("Pack", true) && !a.text().contains("Zip", true) }
-                    .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-                    .filter { isSupportedLink(it) }
+                    .mapNotNull { a -> DomainManager.fixUrl(a.attr("href"), effectiveBase)?.takeIf { isSupportedLink(it, a.text()) } }
                 if (hrefs.isNotEmpty()) {
                     grouped.getOrPut(epKey) { mutableListOf() }.addAll(hrefs)
                 }
@@ -180,7 +185,7 @@ class HDhub4u : MainAPI() {
                 val episodes = grouped.entries.mapIndexed { i, (epName, urls) ->
                     val num = Regex("""(\d+)""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: (i + 1)
                     newEpisode(
-                        url = JSONArray(urls.distinct()).toString(),
+                        url = JSONArray(urls.distinct().take(10)).toString(),
                         initializer = {
                             this.name = epName
                             this.season = 1
@@ -197,12 +202,7 @@ class HDhub4u : MainAPI() {
             }
         }
 
-        val allLinks = content.select("a[href]")
-            .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-            .filter { isSupportedLink(it) }
-            .distinct()
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
-
+        val allLinks = LeovonixExtractors.collectDownloadLinks(content, effectiveBase, maxLinks = 10)
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(allLinks, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -215,7 +215,7 @@ class HDhub4u : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val urls = LeovonixExtractors.parsePayloadUrls(data)
+        val urls = LeovonixExtractors.parsePayloadUrls(data).take(10)
         if (urls.isEmpty()) return false
         urls.safeForEach { target ->
             runCatching {

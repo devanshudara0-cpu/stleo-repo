@@ -86,8 +86,10 @@ class HDMovie2 : MainAPI() {
         val base = activeBase()
         val path = request.data.trimStart('/')
         val url = if (page <= 1) "$base/$path" else "$base/${path.trimEnd('/')}/page/$page/"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("article.card, article.item, div.items article").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("hdmovie2", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.card, article.item, div.items article").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -95,8 +97,10 @@ class HDMovie2 : MainAPI() {
         val base = activeBase()
         val q = URLEncoder.encode(query.trim(), "UTF-8")
         val url = if (page <= 1) "$base/?s=$q" else "$base/page/$page/?s=$q"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("div.result-item article, article.card, article.item").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("hdmovie2", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("div.result-item article, article.card, article.item").mapNotNull { it.toCard(effectiveBase) }
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
@@ -104,7 +108,7 @@ class HDMovie2 : MainAPI() {
         val targets = mutableListOf<String>()
         for (a in doc.select("li.dooplay_player_option a[data-source], a[data-source]")) {
             val src = a.attr("data-source").trim()
-            if (src.isNotBlank() && !src.contains("youtube.com", true) && !src.contains("youtu.be", true)) {
+            if (src.isNotBlank() && LeovonixExtractors.isCandidateLink(src, a.text())) {
                 DomainManager.fixUrl(src, base)?.let { targets += it }
             }
         }
@@ -118,24 +122,26 @@ class HDMovie2 : MainAPI() {
         }
         for (a in doc.select("a[href]")) {
             val href = DomainManager.fixUrl(a.attr("href"), base) ?: continue
+            if (!LeovonixExtractors.isCandidateLink(href, a.text())) continue
             val hl = href.lowercase()
-            if (hl.contains("gdflix") || hl.contains("hubcloud") || hl.contains("hdm") ||
+            if (hl.contains("gdflix") || hl.contains("hubcloud") || hl.contains("hdm.") ||
                 hl.contains("abyss") || hl.contains("ok.ru") || hl.contains("molop")
             ) {
                 targets += href
             }
         }
-        return targets.distinct()
+        return targets.distinct().take(10)
     }
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val (doc, normalized) = DomainManager.fetchDocument("hdmovie2", url, base)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1, div.data h1")?.text().orEmpty()
         ).ifBlank { "HDMovie2 Title" }
-        val poster = DomainManager.extractPoster(doc.selectFirst("div.poster") ?: doc.body(), base)
+        val poster = DomainManager.extractPoster(doc.selectFirst("div.poster") ?: doc.body(), effectiveBase)
         val plotText = doc.selectFirst("div.wp-content p, .synopsis p")?.text()
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(title)?.groupValues?.get(1)?.toIntOrNull()
 
@@ -144,7 +150,7 @@ class HDMovie2 : MainAPI() {
             val episodes = mutableListOf<Episode>()
             doc.select("ul.episodios li").forEachIndexed { idx, li ->
                 val a = li.selectFirst("a[href]") ?: return@forEachIndexed
-                val epUrl = DomainManager.normalizeWithBase(a.attr("href"), base)
+                val epUrl = DomainManager.normalizeWithBase(a.attr("href"), effectiveBase)
                 val epTitle = a.text().trim().ifBlank { "Episode ${idx + 1}" }
                 val epNum = Regex("""(\d+)""").find(li.selectFirst(".numerando")?.text().orEmpty())?.groupValues?.get(1)?.toIntOrNull()
                     ?: (idx + 1)
@@ -152,7 +158,7 @@ class HDMovie2 : MainAPI() {
                     this.name = epTitle
                     this.season = 1
                     this.episode = epNum
-                    this.posterUrl = DomainManager.extractPoster(li, base) ?: poster
+                    this.posterUrl = DomainManager.extractPoster(li, effectiveBase) ?: poster
                 }
             }
             if (episodes.isNotEmpty()) {
@@ -164,8 +170,9 @@ class HDMovie2 : MainAPI() {
             }
         }
 
-        val targets = extractPlayerTargets(doc, base, normalized)
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(doc, base) }
+        val content = doc.selectFirst("div.wp-content, .entry-content, main") ?: doc.body()
+        val targets = extractPlayerTargets(doc, effectiveBase, normalized)
+            .ifEmpty { LeovonixExtractors.collectDownloadLinks(content, effectiveBase, maxLinks = 10) }
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(targets, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -181,10 +188,10 @@ class HDMovie2 : MainAPI() {
     ): Boolean {
         val base = activeBase()
         val items = if (data.startsWith("http")) {
-            val doc = app.get(data, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-            extractPlayerTargets(doc, base, data)
+            val (doc, landed) = DomainManager.fetchDocument("hdmovie2", data, base)
+            extractPlayerTargets(doc, DomainManager.originOf(landed).ifBlank { base }, landed)
         } else {
-            LeovonixExtractors.parsePayloadUrls(data)
+            LeovonixExtractors.parsePayloadUrls(data).take(10)
         }
         if (items.isEmpty()) return false
 
@@ -198,6 +205,7 @@ class HDMovie2 : MainAPI() {
                             "$b/wp-admin/admin-ajax.php",
                             headers = mapOf("User-Agent" to LeovonixExtractors.UA, "Referer" to parts[4]),
                             data = mapOf("action" to "doo_player_ajax", "post" to parts[1], "nume" to parts[2], "type" to parts[3]),
+                            timeout = 10L,
                         ).text
                         val embedUrl = JSONObject(res).optString("embed_url").trim()
                         if (embedUrl.isNotBlank()) {

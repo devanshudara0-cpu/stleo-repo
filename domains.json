@@ -9,13 +9,61 @@
   "moviesmod": "https://moviesmod.free",
   "vegamovies": "https://vegamovies.latino",
   "multimovies": "https://m1.multimovies.courses",
-  "hubcloud": "https://hubcloud.mov",
-  "gdflix": "https://new10.gdflix.io",
-  "hubdrive": "https://hubdrive.blog",
-  "hblinks": "https://hblinks.lol",
-  "hubcdn": "https://hubcdn.wiki",
-  "vcloud": "https://vcloud.fit",
-  "gofile": "https://gofile.io",
-  "pixeldrain": "https://pixeldrain.dev",
-  "hdstream4u": "https://hdstream4u.com"
+  "rogmovies": "https://rogmovies.beauty",
+  "movies4u": "https://new9.movies4u.garden",
+  "zinkmovies": "https://zinkmovies.casa",
+  "mirrors": {
+    "4khdhub": [
+      "https://4khdhub.one"
+    ],
+    "hdhub4u": [
+      "https://new17.hdhub4u.cl",
+      "https://hdhub4u.ec",
+      "https://hdhub4u.hot"
+    ],
+    "uhdmovies": [
+      "https://uhdmovies.ceo",
+      "https://uhdmovies.mov"
+    ],
+    "hdmovie2": [
+      "https://hdmovie2a.asia",
+      "https://hmovie2a.beer",
+      "https://hdmovie2.training"
+    ],
+    "hindmoviez": [
+      "https://hindmovie.vin",
+      "https://v5.hindmovie.im"
+    ],
+    "moviesdrive": [
+      "https://new5.moviesdrive.cyou",
+      "https://moviesdrives.bid",
+      "https://moviedrive.org",
+      "https://moviesdrives.cfd"
+    ],
+    "bollyflix": [
+      "https://new1.bollyflix.tours",
+      "https://bollyflix.to"
+    ],
+    "moviesmod": [
+      "https://moviesmod.free",
+      "https://moviesmod.org"
+    ],
+    "vegamovies": [
+      "https://vegamovies.latino",
+      "https://vegamovies.lease"
+    ],
+    "multimovies": [
+      "https://m1.multimovies.courses"
+    ],
+    "rogmovies": [
+      "https://rogmovies.beauty"
+    ],
+    "movies4u": [
+      "https://new9.movies4u.garden",
+      "https://movies4u.foo"
+    ],
+    "zinkmovies": [
+      "https://zinkmovies.casa"
+    ]
+  }
 }

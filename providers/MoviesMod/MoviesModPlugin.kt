@@ -88,8 +88,10 @@ class MoviesMod : MainAPI() {
             page <= 1 -> "$base/$path"
             else -> "$base/${path.trimEnd('/')}/page/$page/"
         }
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
-        val items = doc.select("article.latestPost").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("moviesmod", url, base, timeout = 20L)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.latestPost").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -97,28 +99,32 @@ class MoviesMod : MainAPI() {
         val base = activeBase()
         val q = URLEncoder.encode(query.trim(), "UTF-8").replace("+", "%20")
         val url = if (page <= 1) "$base/search/$q" else "$base/search/$q/page/$page/"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
-        val items = doc.select("article.latestPost").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("moviesmod", url, base, timeout = 20L)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.latestPost").mapNotNull { it.toCard(effectiveBase) }
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
-    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
+    private fun isSupportedLink(u: String, text: String? = null): Boolean =
+        LeovonixExtractors.isCandidateLink(u, text)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
+        val (doc, normalized) = DomainManager.fetchDocument("moviesmod", url, base, timeout = 20L)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1.title, h1.entry-title, h1")?.text().orEmpty()
         ).ifBlank { "MoviesMod Title" }
         val content = doc.selectFirst(".thecontent, .entry-content, main") ?: doc.body()
-        val poster = DomainManager.extractPoster(content, base)
+        val poster = DomainManager.extractPoster(content, effectiveBase)
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(title)?.groupValues?.get(1)?.toIntOrNull()
 
         val epGrouped = linkedMapOf<Int, MutableList<String>>()
         for (a in content.select("a[href]")) {
-            val href = DomainManager.fixUrl(a.attr("href"), base) ?: continue
-            if (!isSupportedLink(href)) continue
+            val href = DomainManager.fixUrl(a.attr("href"), effectiveBase) ?: continue
+            if (!isSupportedLink(href, a.text())) continue
             val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(a.text())
             if (epMatch != null) {
                 val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
@@ -129,15 +135,16 @@ class MoviesMod : MainAPI() {
             val modproUrls = content.select("a[href]")
                 .filter { a ->
                     val t = a.text()
-                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true)
+                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true) &&
+                        isSupportedLink(a.attr("href"), t)
                 }
-                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), effectiveBase) }
                 .filter { it.lowercase().contains("modpro.") }
                 .distinct()
                 .take(4)
             for (epPage in modproUrls) {
                 runCatching {
-                    val epDoc = app.get(epPage, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 60L).document
+                    val epDoc = app.get(epPage, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 12L).document
                     val epBody = epDoc.selectFirst(".entry-content, .thecontent, main") ?: epDoc.body()
                     for (a in epBody.select("a[href]")) {
                         val txt = a.text().trim()
@@ -145,7 +152,7 @@ class MoviesMod : MainAPI() {
                         val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(txt) ?: continue
                         val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
                         val href = DomainManager.fixUrl(a.attr("href"), epPage) ?: continue
-                        if (isSupportedLink(href) && !href.lowercase().contains("modpro.")) {
+                        if (isSupportedLink(href, txt) && !href.lowercase().contains("modpro.")) {
                             epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
                         }
                     }
@@ -155,7 +162,7 @@ class MoviesMod : MainAPI() {
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(
-                    url = JSONArray(urls.distinct()).toString(),
+                    url = JSONArray(urls.distinct().take(10)).toString(),
                     initializer = {
                         this.name = "Episode $epNum"
                         this.season = 1
@@ -171,11 +178,7 @@ class MoviesMod : MainAPI() {
             }
         }
 
-        val links = content.select("a[href]")
-            .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-            .filter { isSupportedLink(it) }
-            .distinct()
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
+        val links = LeovonixExtractors.collectDownloadLinks(content, effectiveBase, maxLinks = 10)
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(links, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -188,7 +191,7 @@ class MoviesMod : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val urls = LeovonixExtractors.parsePayloadUrls(data)
+        val urls = LeovonixExtractors.parsePayloadUrls(data).take(10)
         if (urls.isEmpty()) return false
         urls.safeForEach { target ->
             runCatching {

@@ -89,8 +89,10 @@ class HindMoviez : MainAPI() {
             page <= 1 -> "$base/$path"
             else -> "$base/${path.trimEnd('/')}/page/$page/"
         }
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("article.post, div.items article, article").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("hindmoviez", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.post, div.items article, article").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -98,52 +100,57 @@ class HindMoviez : MainAPI() {
         val base = activeBase()
         val q = URLEncoder.encode(query.trim(), "UTF-8")
         val url = if (page <= 1) "$base/?s=$q" else "$base/page/$page/?s=$q"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("article.post, div.items article, article").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("hindmoviez", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.post, div.items article, article").mapNotNull { it.toCard(effectiveBase) }
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
-    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
+    private fun isSupportedLink(u: String, text: String? = null): Boolean =
+        LeovonixExtractors.isCandidateLink(u, text)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val (doc, normalized) = DomainManager.fetchDocument("hindmoviez", url, base)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1.entry-title, h1")?.text().orEmpty()
         ).ifBlank { "HindMoviez Title" }
         val content = doc.selectFirst(".entry-content, main") ?: doc.body()
-        val poster = DomainManager.extractPoster(content, base)
+        val poster = DomainManager.extractPoster(content, effectiveBase)
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(title)?.groupValues?.get(1)?.toIntOrNull()
 
         val epGrouped = linkedMapOf<Int, MutableList<String>>()
         for (a in content.select("a[href]")) {
-            val href = DomainManager.fixUrl(a.attr("href"), base) ?: continue
-            if (!isSupportedLink(href)) continue
+            val href = DomainManager.fixUrl(a.attr("href"), effectiveBase) ?: continue
+            if (!isSupportedLink(href, a.text())) continue
             val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(a.text())
             if (epMatch != null) {
                 val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
                 epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
             }
         }
-        if (epGrouped.isEmpty()) {
-            val mvUrls = content.select("a[href]")
-                .filter { a ->
-                    val t = a.text()
-                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true)
-                }
-                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-                .filter { it.lowercase().contains("mvlink.") }
-                .distinct()
-                .take(4)
+        val mvUrls = content.select("a[href]")
+            .filter { a ->
+                val t = a.text()
+                !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true) &&
+                    isSupportedLink(a.attr("href"), t)
+            }
+            .mapNotNull { DomainManager.fixUrl(it.attr("href"), effectiveBase) }
+            .filter { it.lowercase().contains("mvlink.") }
+            .distinct()
+            .take(5)
+
+        if (epGrouped.isEmpty() && mvUrls.isNotEmpty()) {
             for (mvUrl in mvUrls) {
                 runCatching {
-                    val mvDoc = app.get(mvUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    val mvDoc = app.get(mvUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 10L).document
                     for (a in mvDoc.select("a[href]")) {
                         val txt = a.text().trim()
                         val href = DomainManager.fixUrl(a.attr("href"), mvUrl) ?: continue
-                        if (!isSupportedLink(href) || href.lowercase().contains("mvlink.")) continue
-                        if (txt.contains("zip", true) || txt.contains("batch", true)) continue
+                        if (!isSupportedLink(href, txt) || href.lowercase().contains("mvlink.")) continue
                         val epNum = Regex("""(?i)Episode\s*0*(\d+)""").find(txt)?.groupValues?.get(1)?.toIntOrNull()
                             ?: Regex("""(?i)S\d+E0*(\d+)""").find("$txt $href")?.groupValues?.get(1)?.toIntOrNull()
                             ?: continue
@@ -155,7 +162,7 @@ class HindMoviez : MainAPI() {
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(
-                    url = JSONArray(urls.distinct()).toString(),
+                    url = JSONArray(urls.distinct().take(10)).toString(),
                     initializer = {
                         this.name = "Episode $epNum"
                         this.season = 1
@@ -171,11 +178,8 @@ class HindMoviez : MainAPI() {
             }
         }
 
-        val links = content.select("a[href]")
-            .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-            .filter { isSupportedLink(it) }
-            .distinct()
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
+        val links = LeovonixExtractors.collectDownloadLinks(content, effectiveBase, maxLinks = 10)
+            .ifEmpty { mvUrls }
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(links, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -188,7 +192,7 @@ class HindMoviez : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val urls = LeovonixExtractors.parsePayloadUrls(data)
+        val urls = LeovonixExtractors.parsePayloadUrls(data).take(10)
         if (urls.isEmpty()) return false
         urls.safeForEach { target ->
             runCatching {

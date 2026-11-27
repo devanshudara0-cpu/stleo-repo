@@ -57,11 +57,14 @@ jobs:
             "HDhub4u|com.leovonix.providers.hdhub4u.HDhub4uPlugin|HDhub4u|HDhub4u"
             "HDMovie2|com.leovonix.providers.hdmovie2.HDMovie2Plugin|HDMovie2|HDMovie2"
             "HindMoviez|com.leovonix.providers.hindmoviez.HindMoviezPlugin|HindMoviez|HindMoviez"
+            "Movies4u|com.leovonix.providers.movies4u.Movies4uPlugin|Movies4u|Movies4u"
             "MoviesDrive|com.leovonix.providers.moviesdrive.MoviesDrivePlugin|MoviesDrive|MoviesDrive"
             "MoviesMod|com.leovonix.providers.moviesmod.MoviesModPlugin|MoviesMod|MoviesMod"
             "MultiMovies|com.leovonix.providers.multimovies.MultiMoviesPlugin|MultiMovies|MultiMovies"
+            "RogMovies|com.leovonix.providers.rogmovies.RogMoviesPlugin|RogMovies|RogMovies"
             "UHDMovies|com.leovonix.providers.uhdmovies.UHDMoviesPlugin|UHDMovies|UHDMovies"
             "VegaMovies|com.leovonix.providers.vegamovies.VegaMoviesPlugin|VegaMovies|VegaMovies"
+            "ZinkMovies|com.leovonix.providers.zinkmovies.ZinkMoviesPlugin|ZinkMovies|ZinkMovies"
           )
 
           for entry in "${PROVIDERS[@]}"; do
@@ -92,7 +95,7 @@ jobs:
 
             # Write manifest.json
             cat > "$BUILD_OUT/dex/manifest.json" <<EOF
-          {"name":"$INTERNAL","pluginClassName":"$CLASS","version":115,"requiresResources":false}
+          {"name":"$INTERNAL","pluginClassName":"$CLASS","version":116,"requiresResources":false}
           EOF
 
             # Package into .leo
@@ -140,7 +143,7 @@ jobs:
           BASE_URL = "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/builds"
           ICONS_URL = "https://raw.githubusercontent.com/devanshudara0-cpu/stleo-repo/main/icons"
           REPO_URL = "https://github.com/devanshudara0-cpu/stleo-repo"
-          VERSION = 115
+          VERSION = 116
 
           # Provider metadata: internalName -> (displayName, buildFile, description, language, tvTypes, iconExt)
           PROVIDERS = {
@@ -149,11 +152,14 @@ jobs:
               "HDhub4u": ("LEOVONIX HDhub4u Server", "HDhub4u", "Hindi Dubbed & Bollywood 4K Server", "hi", ["Movie","TvSeries","Anime"], "png"),
               "HDMovie2": ("LEOVONIX HDMovie2 Server", "HDMovie2", "HD Hindi & Dubbed Movies", "hi", ["Movie","TvSeries"], "png"),
               "HindMoviez": ("LEOVONIX HindMoviez Server", "HindMoviez", "Watch Movies & TvSeries (Multi-Lang)", "hi", ["Movie","TvSeries"], "png"),
+              "Movies4u": ("LEOVONIX Movies4u Server", "Movies4u", "Direct HubCloud & GDFlix HD Server", "hi", ["Movie","TvSeries","Anime"], "png"),
               "MoviesDrive": ("LEOVONIX MoviesDrive Server", "MoviesDrive", "Direct Drive Links HD Server", "hi", ["Movie","TvSeries"], "png"),
               "MoviesMod": ("LEOVONIX MoviesMod Server", "MoviesMod", "Modded Multi-Lang Movie Server", "hi", ["Movie","TvSeries"], "png"),
               "MultiMovies": ("LEOVONIX MultiMovies Server", "MultiMovies", "Indian Multi-language HD Provider", "hi", ["Movie","TvSeries","Anime"], "png"),
+              "RogMovies": ("LEOVONIX RogMovies Server", "RogMovies", "Fast PlayDrive & NexDrive Hindi Server", "hi", ["Movie","TvSeries","Anime"], "png"),
               "UHDMovies": ("LEOVONIX UHD Movies", "UHDMovies", "Direct 4K UHD Movies Server", "en", ["Movie","TvSeries"], "png"),
               "VegaMovies": ("LEOVONIX VegaMovies Server", "VegaMovies", "Indian 4K & UHD Movie Server", "hi", ["Movie","TvSeries"], "png"),
+              "ZinkMovies": ("LEOVONIX ZinkMovies Server", "ZinkMovies", "Instant M3U8 Hindi & Dual Audio Server", "hi", ["Movie","TvSeries","Anime"], "png"),
           }
 
           plugins = []
@@ -200,7 +206,7 @@ jobs:
           git config user.email "bot@leovonix.local"
           git add builds/ plugins.json
           if ! git diff --cached --quiet; then
-            git commit -m "chore(build): compile clean v115 plugins from Kotlin source [skip ci]"
+            git commit -m "chore(build): compile clean v116 plugins from Kotlin source [skip ci]"
             git push origin HEAD:main
           else
             echo "No changes to commit."

@@ -87,8 +87,10 @@ class MultiMovies : MainAPI() {
         val base = activeBase()
         val path = request.data.trim('/')
         val url = if (page <= 1) "$base/$path" else "$base/$path?page=$page"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("article.poster-card").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("multimovies", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.poster-card").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -96,26 +98,29 @@ class MultiMovies : MainAPI() {
         val base = activeBase()
         val q = URLEncoder.encode(query.trim(), "UTF-8")
         val url = "$base/search?q=$q&page=$page"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("article.poster-card").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("multimovies", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.poster-card").mapNotNull { it.toCard(effectiveBase) }
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val (doc, normalized) = DomainManager.fetchDocument("multimovies", url, base)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1")?.text().orEmpty()
         ).ifBlank { "MultiMovies Title" }
-        val poster = DomainManager.extractPoster(doc.selectFirst(".watch-poster, .poster, main") ?: doc.body(), base)
+        val poster = DomainManager.extractPoster(doc.selectFirst(".watch-poster, .poster, main") ?: doc.body(), effectiveBase)
         val plotText = doc.selectFirst(".watch-overview, .overview, .synopsis, p")?.text()
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(doc.select(".watch-meta, .meta").text().ifBlank { title })?.groupValues?.get(1)?.toIntOrNull()
 
         val epCards = doc.select("a[href*=/watch/series/], a[href*=/episode/]")
         if (epCards.isNotEmpty()) {
             val episodes = epCards.mapIndexedNotNull { idx, a ->
-                val epUrl = DomainManager.normalizeWithBase(a.attr("href"), base)
+                val epUrl = DomainManager.normalizeWithBase(a.attr("href"), effectiveBase)
                 val epName = a.text().trim().ifBlank { "Episode ${idx + 1}" }
                 val sNum = Regex("""(?i)S(\d+)""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: 1
                 val eNum = Regex("""(?i)E(\d+)|Episode\s*(\d+)""").find(epName)?.let {
@@ -125,7 +130,7 @@ class MultiMovies : MainAPI() {
                     this.name = epName
                     this.season = sNum
                     this.episode = eNum
-                    this.posterUrl = DomainManager.extractPoster(a, base) ?: poster
+                    this.posterUrl = DomainManager.extractPoster(a, effectiveBase) ?: poster
                 }
             }.distinctBy { it.data }
             if (episodes.isNotEmpty()) {
@@ -138,9 +143,11 @@ class MultiMovies : MainAPI() {
         }
 
         val serverUrls = doc.select("button.server-chip[data-url], [data-url]")
-            .mapNotNull { DomainManager.fixUrl(it.attr("data-url"), base) }
+            .mapNotNull { DomainManager.fixUrl(it.attr("data-url"), effectiveBase) }
+            .filter { LeovonixExtractors.isCandidateLink(it) }
             .distinct()
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(doc, base) }
+            .take(10)
+            .ifEmpty { LeovonixExtractors.collectDownloadLinks(doc.body(), effectiveBase, maxLinks = 10) }
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(serverUrls, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -156,17 +163,20 @@ class MultiMovies : MainAPI() {
     ): Boolean {
         val base = activeBase()
         val urls = if (data.startsWith("http")) {
-            val doc = app.get(data, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+            val (doc, landed) = DomainManager.fetchDocument("multimovies", data, base)
+            val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
             doc.select("button.server-chip[data-url], [data-url]")
-                .mapNotNull { DomainManager.fixUrl(it.attr("data-url"), base) }
+                .mapNotNull { DomainManager.fixUrl(it.attr("data-url"), effectiveBase) }
+                .filter { LeovonixExtractors.isCandidateLink(it) }
                 .distinct()
+                .take(10)
         } else {
-            LeovonixExtractors.parsePayloadUrls(data)
+            LeovonixExtractors.parsePayloadUrls(data).take(10)
         }
         if (urls.isEmpty()) return false
         urls.safeForEach { target ->
             runCatching {
-                LeovonixExtractors.resolveLinks(target, name, base, null, subtitleCallback, callback)
+                LeovonixExtractors.resolveLinks(target, name, mainUrl, null, subtitleCallback, callback)
             }.onFailure {
                 Log.e("MultiMovies", "Link failed $target: ${it.message}")
             }

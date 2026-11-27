@@ -91,8 +91,10 @@ class FourKHDHub : MainAPI() {
             page <= 1 -> "$base/$path"
             else -> "$base/$path/page/$page/".replace("//page", "/page")
         }
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("div.card-grid a.movie-card, a.movie-card").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("4khdhub", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("div.card-grid a.movie-card, a.movie-card").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -100,29 +102,27 @@ class FourKHDHub : MainAPI() {
         val base = activeBase()
         val q = URLEncoder.encode(query.trim(), "UTF-8")
         val url = if (page <= 1) "$base/?s=$q" else "$base/page/$page/?s=$q"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("div.card-grid a.movie-card, a.movie-card").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("4khdhub", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("div.card-grid a.movie-card, a.movie-card").mapNotNull { it.toCard(effectiveBase) }
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
-    private fun collectHostLinks(container: Element, base: String): List<String> {
-        return container.select("a[href]")
-            .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-            .filter { LeovonixExtractors.isCandidateLink(it) }
-            .distinct()
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(container, base) }
-    }
+    private fun collectHostLinks(container: Element, base: String): List<String> =
+        LeovonixExtractors.collectDownloadLinks(container, base, maxLinks = 10)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val (doc, normalized) = DomainManager.fetchDocument("4khdhub", url, base)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1.page-title, h1.movie-title, h1")?.text().orEmpty()
         ).ifBlank { "Movie" }
         val poster = DomainManager.extractPoster(
             doc.selectFirst(".movie-poster, .poster, article img")?.parent() ?: doc.body(),
-            base
+            effectiveBase
         )
         val plotText = doc.selectFirst(".movie-synopsis, .synopsis, .entry-content p, p.description")?.text()
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find("$title ${doc.select(".movie-meta, .meta-badges").text()}")?.groupValues?.get(1)?.toIntOrNull()
@@ -133,7 +133,7 @@ class FourKHDHub : MainAPI() {
             epBlocks.forEachIndexed { idx, block ->
                 val epTitle = block.selectFirst(".episode-title, h4, h3, strong")?.text()?.trim().orEmpty()
                     .ifBlank { "Episode ${idx + 1}" }
-                val links = collectHostLinks(block, base)
+                val links = collectHostLinks(block, effectiveBase)
                 if (links.isNotEmpty()) {
                     val seasonNum = Regex("""S(\d+)""", RegexOption.IGNORE_CASE).find(epTitle)?.groupValues?.get(1)?.toIntOrNull()
                         ?: Regex("""Season\s*(\d+)""", RegexOption.IGNORE_CASE).find(block.parents().text())?.groupValues?.get(1)?.toIntOrNull()
@@ -162,7 +162,7 @@ class FourKHDHub : MainAPI() {
         }
 
         val downloadRoot = doc.selectFirst(".download-items-grid, .download-section, main") ?: doc.body()
-        val links = collectHostLinks(downloadRoot, base)
+        val links = collectHostLinks(downloadRoot, effectiveBase)
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(links, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -176,7 +176,7 @@ class FourKHDHub : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val urls = LeovonixExtractors.parsePayloadUrls(data)
+        val urls = LeovonixExtractors.parsePayloadUrls(data).take(10)
 
         if (urls.isEmpty()) return false
         urls.safeForEach { target ->

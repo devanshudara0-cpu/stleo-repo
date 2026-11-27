@@ -88,8 +88,10 @@ class BollyFlix : MainAPI() {
             page <= 1 -> "$base/$path"
             else -> "$base/${path.trimEnd('/')}/page/$page/"
         }
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("article.latestPost").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("bollyflix", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.latestPost").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -97,28 +99,32 @@ class BollyFlix : MainAPI() {
         val base = activeBase()
         val q = URLEncoder.encode(query.trim(), "UTF-8")
         val url = if (page <= 1) "$base/?s=$q" else "$base/page/$page/?s=$q"
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("article.latestPost").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("bollyflix", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("article.latestPost").mapNotNull { it.toCard(effectiveBase) }
         return newSearchResponseList(items, items.isNotEmpty())
     }
 
-    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
+    private fun isSupportedLink(u: String, text: String? = null): Boolean =
+        LeovonixExtractors.isCandidateLink(u, text)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val (doc, normalized) = DomainManager.fetchDocument("bollyflix", url, base)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1.title, h1.entry-title, h1")?.text().orEmpty()
         ).ifBlank { "BollyFlix Title" }
         val content = doc.selectFirst(".thecontent, .entry-content, main") ?: doc.body()
-        val poster = DomainManager.extractPoster(content, base)
+        val poster = DomainManager.extractPoster(content, effectiveBase)
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(title)?.groupValues?.get(1)?.toIntOrNull()
 
         val epGrouped = linkedMapOf<Int, MutableList<String>>()
         for (a in content.select("a[href]")) {
-            val href = DomainManager.fixUrl(a.attr("href"), base) ?: continue
-            if (!isSupportedLink(href)) continue
+            val href = DomainManager.fixUrl(a.attr("href"), effectiveBase) ?: continue
+            if (!isSupportedLink(href, a.text())) continue
             val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(a.text())
             if (epMatch != null) {
                 val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
@@ -129,22 +135,23 @@ class BollyFlix : MainAPI() {
             val fxUrls = content.select("a[href]")
                 .filter { a ->
                     val t = a.text()
-                    !t.contains("zip", true) && !t.contains("batch", true)
+                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true) &&
+                        isSupportedLink(a.attr("href"), t)
                 }
-                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), effectiveBase) }
                 .filter { val l = it.lowercase(); l.contains("fxlinks.") || l.contains("linksmod.") }
                 .distinct()
                 .take(4)
             for (fxUrl in fxUrls) {
                 runCatching {
-                    val fxDoc = app.get(fxUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    val fxDoc = app.get(fxUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 10L).document
                     for (a in fxDoc.select("a[href]")) {
                         val txt = a.text().trim()
                         if (txt.contains("zip", true) || txt.contains("batch", true)) continue
                         val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(txt) ?: continue
                         val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
                         val href = DomainManager.fixUrl(a.attr("href"), fxUrl) ?: continue
-                        if (isSupportedLink(href) && !href.lowercase().contains("fxlinks.")) {
+                        if (isSupportedLink(href, txt) && !href.lowercase().contains("fxlinks.")) {
                             epGrouped.getOrPut(epNum) { mutableListOf() }.add(href)
                         }
                     }
@@ -154,7 +161,7 @@ class BollyFlix : MainAPI() {
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(
-                    url = JSONArray(urls.distinct()).toString(),
+                    url = JSONArray(urls.distinct().take(10)).toString(),
                     initializer = {
                         this.name = "Episode $epNum"
                         this.season = 1
@@ -170,11 +177,7 @@ class BollyFlix : MainAPI() {
             }
         }
 
-        val links = content.select("a[href]")
-            .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-            .filter { isSupportedLink(it) }
-            .distinct()
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
+        val links = LeovonixExtractors.collectDownloadLinks(content, effectiveBase, maxLinks = 10)
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(links, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -187,7 +190,7 @@ class BollyFlix : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val urls = LeovonixExtractors.parsePayloadUrls(data)
+        val urls = LeovonixExtractors.parsePayloadUrls(data).take(10)
         if (urls.isEmpty()) return false
         urls.safeForEach { target ->
             runCatching {

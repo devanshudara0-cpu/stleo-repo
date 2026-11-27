@@ -92,8 +92,10 @@ class VegaMovies : MainAPI() {
             page <= 1 -> "$base/$path"
             else -> "$base/${path.trimEnd('/')}/page/$page/"
         }
-        val doc = app.get(url, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
-        val items = doc.select("div.poster-card").mapNotNull { it.toCard(base) }
+        val (doc, landed) = DomainManager.fetchDocument("vegamovies", url, base)
+        val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+        mainUrl = effectiveBase
+        val items = doc.select("div.poster-card").mapNotNull { it.toCard(effectiveBase) }
         return newHomePageResponse(request.name, items, items.isNotEmpty())
     }
 
@@ -102,17 +104,21 @@ class VegaMovies : MainAPI() {
         val q = URLEncoder.encode(query.trim(), "UTF-8")
         val results = mutableListOf<SearchResponse>()
         runCatching {
-            val text = app.get(
+            val (text, landed) = DomainManager.fetchText(
+                "vegamovies",
                 "$base/ts-search.php?q=$q&page=$page",
+                base,
                 headers = mapOf("User-Agent" to LeovonixExtractors.UA, "Referer" to "$base/"),
-            ).text
+            )
+            val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+            mainUrl = effectiveBase
             val hits = JSONObject(text).optJSONArray("hits") ?: JSONArray()
             for (i in 0 until hits.length()) {
                 val docObj = hits.optJSONObject(i)?.optJSONObject("document") ?: continue
                 val title = DomainManager.cleanTitle(docObj.optString("post_title"))
                 val perm = docObj.optString("permalink")
                 if (title.isBlank() || perm.isBlank()) continue
-                val href = DomainManager.normalizeWithBase(perm, base)
+                val href = DomainManager.normalizeWithBase(perm, effectiveBase)
                 val poster = docObj.optString("post_thumbnail").takeIf { it.startsWith("http") }
                 val isSeries = title.contains("Season", true) || perm.contains("season", true)
                 results += if (isSeries) {
@@ -128,26 +134,35 @@ class VegaMovies : MainAPI() {
                 }
             }
         }
+        if (results.isEmpty()) {
+            runCatching {
+                val (doc, landed) = DomainManager.fetchDocument("vegamovies", "$base/?s=$q", base)
+                val effectiveBase = DomainManager.originOf(landed).ifBlank { base }
+                results += doc.select("div.poster-card").mapNotNull { it.toCard(effectiveBase) }
+            }
+        }
         return newSearchResponseList(results, results.size >= 15)
     }
 
-    private fun isSupportedLink(u: String): Boolean = LeovonixExtractors.isCandidateLink(u)
+    private fun isSupportedLink(u: String, text: String? = null): Boolean =
+        LeovonixExtractors.isCandidateLink(u, text)
 
     override suspend fun load(url: String): LoadResponse? {
         val base = activeBase()
-        val normalized = DomainManager.normalizeWithBase(url, base)
-        val doc = app.get(normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+        val (doc, normalized) = DomainManager.fetchDocument("vegamovies", url, base)
+        val effectiveBase = DomainManager.originOf(normalized).ifBlank { base }
+        mainUrl = effectiveBase
         val title = DomainManager.cleanTitle(
             doc.selectFirst("h1, h1.entry-title")?.text().orEmpty()
         ).ifBlank { "VegaMovies Title" }
-        val content = doc.selectFirst(".entry-content, .page-body, main") ?: doc.body()
-        val poster = DomainManager.extractPoster(content, base)
+        val content = doc.selectFirst("div.page-body, .page-body, .entry-content, main") ?: doc.body()
+        val poster = DomainManager.extractPoster(content, effectiveBase)
         val yearVal = Regex("""\b(19\d\d|20[0-3]\d)\b""").find(title)?.groupValues?.get(1)?.toIntOrNull()
 
         val epGrouped = linkedMapOf<Int, MutableList<String>>()
         for (a in content.select("a[href]")) {
-            val href = DomainManager.fixUrl(a.attr("href"), base) ?: continue
-            if (!isSupportedLink(href)) continue
+            val href = DomainManager.fixUrl(a.attr("href"), effectiveBase) ?: continue
+            if (!isSupportedLink(href, a.text())) continue
             val epMatch = Regex("""(?i)Episode\s*0*(\d+)""").find(a.text())
             if (epMatch != null) {
                 val epNum = epMatch.groupValues[1].toIntOrNull() ?: continue
@@ -158,15 +173,15 @@ class VegaMovies : MainAPI() {
             val nexUrls = content.select("a[href]")
                 .filter { a ->
                     val t = a.text()
-                    !t.contains("zip", true) && !t.contains("batch", true)
+                    !t.contains("zip", true) && !t.contains("batch", true) && !t.contains("pack", true)
                 }
-                .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
+                .mapNotNull { DomainManager.fixUrl(it.attr("href"), effectiveBase) }
                 .filter { it.lowercase().contains("nexdrive.") }
                 .distinct()
                 .take(4)
             for (nexUrl in nexUrls) {
                 runCatching {
-                    val nexDoc = app.get(nexUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA)).document
+                    val nexDoc = app.get(nexUrl, referer = normalized, headers = mapOf("User-Agent" to LeovonixExtractors.UA), timeout = 10L).document
                     val nexBody = nexDoc.selectFirst(".entry-content, .post-inner, main") ?: nexDoc.body()
                     var currentEp: Int? = null
                     for (el in nexBody.select("h2, h3, h4, h5, p")) {
@@ -180,8 +195,7 @@ class VegaMovies : MainAPI() {
                             .filter {
                                 val hl = it.lowercase()
                                 LeovonixExtractors.isCandidateLink(it) &&
-                                    !hl.contains("nexdrive.") &&
-                                    !hl.contains("vglist.")
+                                    !hl.contains("nexdrive.")
                             }
                         if (hrefs.isNotEmpty()) {
                             epGrouped.getOrPut(epNum) { mutableListOf() }.addAll(hrefs)
@@ -193,7 +207,7 @@ class VegaMovies : MainAPI() {
         if (epGrouped.isNotEmpty()) {
             val episodes = epGrouped.entries.sortedBy { it.key }.map { (epNum, urls) ->
                 newEpisode(
-                    url = JSONArray(urls.distinct()).toString(),
+                    url = JSONArray(urls.distinct().take(10)).toString(),
                     initializer = {
                         this.name = "Episode $epNum"
                         this.season = 1
@@ -209,11 +223,7 @@ class VegaMovies : MainAPI() {
             }
         }
 
-        val links = content.select("a[href]")
-            .mapNotNull { DomainManager.fixUrl(it.attr("href"), base) }
-            .filter { isSupportedLink(it) }
-            .distinct()
-            .ifEmpty { LeovonixExtractors.collectCandidateLinks(content, base) }
+        val links = LeovonixExtractors.collectDownloadLinks(content, effectiveBase, maxLinks = 10)
         return newMovieLoadResponse(title, normalized, TvType.Movie, LeovonixExtractors.linkPayload(links, normalized)) {
             posterUrl = poster
             year = yearVal
@@ -226,7 +236,7 @@ class VegaMovies : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val urls = LeovonixExtractors.parsePayloadUrls(data)
+        val urls = LeovonixExtractors.parsePayloadUrls(data).take(10)
         if (urls.isEmpty()) return false
         urls.safeForEach { target ->
             runCatching {
