@@ -38,7 +38,7 @@ class HindMoviezPlugin : Plugin() {
 }
 
 class HindMoviez : MainAPI() {
-    override var mainUrl = "https://hindmovie.vin"
+    override var mainUrl = "https://v5.hindmovie.im"
     override var name = "HindMoviez"
     override var lang = "hi"
     override val hasMainPage = true

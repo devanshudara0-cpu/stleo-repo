@@ -86,7 +86,7 @@ object LeovonixExtractors {
     private val GARBAGE_URL_TOKENS = listOf(
         "disk.yandex.", "yadi.sk", "yandex.ru", "yandex.com",
         "how-to-download", "how_to_download", "/tutorial", "zipdisk",
-        "t.me/", "t.me", "telegram.", "whatsapp", "facebook.com", "twitter.com", "x.com/",
+        "t.me/", "t.me", "telegram.", "telegram.dog", "whatsapp", "facebook.com", "twitter.com", "x.com/",
         "instagram.com", "discord.", "reddit.com", "mailto:", "javascript:",
         "youtube.com", "youtu.be", "imdb.com", "themoviedb.org",
         "wordpress.org", "templatelens.com", "gravatar.com", "google.com/search",
@@ -275,9 +275,15 @@ object LeovonixExtractors {
         }.getOrNull()
     }
 
+    private fun JSONObject.optCleanString(key: String): String {
+        if (isNull(key)) return ""
+        val v = optString(key).trim()
+        return if (v.equals("null", ignoreCase = true)) "" else v
+    }
+
     private fun unwrapRedirectQuery(url: String): String {
         var cur = url.replace("&amp;", "&").trim()
-        for (i in 0 until 6) {
+        for (i in 0 until 8) {
             if (cur.contains("dl.php?link=")) {
                 val inner = cur.substringAfter("dl.php?link=")
                 if (inner.startsWith("http")) {
@@ -285,7 +291,14 @@ object LeovonixExtractors {
                     continue
                 }
             }
-            val urlParamMatch = Regex("""[?&](?:url|link)=([^&]+)""").find(cur) ?: break
+            if (cur.contains("/dl/?link=")) {
+                val inner = cur.substringAfter("/dl/?link=")
+                if (inner.startsWith("http")) {
+                    cur = inner
+                    continue
+                }
+            }
+            val urlParamMatch = Regex("""[?&](?:url|link|r)=([^&]+)""").find(cur) ?: break
             val decoded = runCatching { URLDecoder.decode(urlParamMatch.groupValues[1], "UTF-8") }.getOrNull()?.trim()
             if (!decoded.isNullOrBlank()) {
                 if (decoded.startsWith("http")) {
@@ -860,12 +873,12 @@ object LeovonixExtractors {
                             if (streams != null) {
                                 for (i in 0 until streams.length()) {
                                     val st = streams.optJSONObject(i) ?: continue
-                                    val rawStreamUrl = st.optString("m3u8_url").ifBlank { st.optString("video_url") }
-                                    val lbl = st.optString("label").ifBlank { st.optString("version_slug") }
+                                    val rawStreamUrl = st.optCleanString("m3u8_url").ifBlank { st.optCleanString("video_url") }
+                                    val lbl = st.optCleanString("label").ifBlank { st.optCleanString("version_slug") }
                                     if (rawStreamUrl.isNotBlank()) candidates += rawStreamUrl to lbl
                                 }
                             }
-                            val itemUrl = obj.optJSONObject("item")?.optString("video_url").orEmpty()
+                            val itemUrl = obj.optJSONObject("item")?.optCleanString("video_url").orEmpty()
                             if (itemUrl.isNotBlank()) candidates += itemUrl to ""
                             for ((rawStreamUrl, lbl) in candidates) {
                                 val unsealed = unsealPaUrl(rawStreamUrl, sealKey) ?: continue
@@ -1184,8 +1197,13 @@ object LeovonixExtractors {
         val reurl = Regex("""var\s+reurl\s*=\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
             ?: Jsoup.parse(html).selectFirst("a#vd[href], a.btn[href*=.mkv], a.btn[href*=.mp4]")?.attr("href")
         if (!reurl.isNullOrBlank() && reurl.startsWith("http")) {
-            val resolved = if (reurl.contains("r?key=") || reurl.contains("hubcdn")) {
-                app.get(reurl, referer = url, allowRedirects = false, timeout = 10L).headers["location"] ?: reurl
+            val unwrapped = unwrapRedirectQuery(reurl)
+            val resolved = if (unwrapped != reurl && unwrapped.startsWith("http")) {
+                unwrapped
+            } else if (reurl.contains("r?key=") || reurl.contains("hubcdn")) {
+                unwrapRedirectQuery(
+                    app.get(reurl, referer = url, allowRedirects = false, timeout = 10L).headers["location"] ?: reurl
+                )
             } else {
                 reurl
             }
